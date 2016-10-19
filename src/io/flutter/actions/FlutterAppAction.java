@@ -18,6 +18,15 @@ abstract public class FlutterAppAction extends DumbAwareAction {
 
   private final ObservatoryConnector myConnector;
   private Computable<Boolean> myIsApplicable;
+  private FlutterApp.State myAppState;
+  private boolean myIsListening = false;
+  private FlutterApp.StateListener myListener = new FlutterApp.StateListener() {
+    @Override
+    public void stateChanged(FlutterApp.State newState) {
+      myAppState = newState;
+      getTemplatePresentation().setEnabled(myIsApplicable.compute() && isRunning());
+    }
+  };
 
   public FlutterAppAction(ObservatoryConnector connector, String text, String description, Icon icon, Computable<Boolean> isApplicable) {
     super(text, description, icon);
@@ -27,7 +36,19 @@ abstract public class FlutterAppAction extends DumbAwareAction {
 
   @Override
   public void update(@NotNull final AnActionEvent e) {
-    e.getPresentation().setEnabled(myIsApplicable.compute());
+    boolean isConnected = myIsApplicable.compute();
+    e.getPresentation().setEnabled(isConnected && isRunning());
+    if (isConnected) {
+      if (!myIsListening) {
+        getApp().addStateListener(myListener);
+        myIsListening = true;
+      }
+    } else {
+      if (myIsListening) {
+        getApp().removeStateListener(myListener);
+        myIsListening = false;
+      }
+    }
   }
 
   FlutterApp getApp() {
@@ -35,8 +56,14 @@ abstract public class FlutterAppAction extends DumbAwareAction {
   }
 
   void ifReadyThen(Runnable x) {
-    if (myConnector.isConnectionReady()) {
+    if (myConnector.isConnectionReady() && isRunning()) {
       x.run();
     }
+  }
+
+  private boolean isRunning() {
+    // TODO(messick): Delete this comment.
+    // If there are any problems with Reload and Restart button enablement just make this return true.
+    return myAppState == FlutterApp.State.STARTED;
   }
 }

@@ -70,6 +70,7 @@ public class FlutterAppManager {
       service = myService;
     }
     RunningFlutterApp app = new RunningFlutterApp(service, controller, this, mode, project, isHot, target, null);
+    app.changeState(FlutterApp.State.STARTING);
     AppStart appStart = new AppStart(deviceId, controller.getProjectDirectory(), isPaused, null, mode.mode(), target, isHot);
     Method cmd = makeMethod(CMD_APP_START, appStart);
     CompletableFuture
@@ -142,7 +143,8 @@ public class FlutterAppManager {
           }
         }
       });
-    } catch (ThreadDeath ex) {
+    }
+    catch (ThreadDeath ex) {
       // Can happen if external process is killed, but we don't care.
     }
     return resp[0];
@@ -208,6 +210,7 @@ public class FlutterAppManager {
   void stopApp(@NotNull FlutterApp app) {
     myProgressHandler.cancel();
     if (app.hasAppId()) {
+      app.changeState(FlutterApp.State.TERMINATING);
       if (app.isSessionPaused()) {
         app.forceResume();
       }
@@ -228,25 +231,30 @@ public class FlutterAppManager {
   }
 
   void restartApp(@NotNull RunningFlutterApp app, boolean isFullRestart) {
+    app.changeState(FlutterApp.State.STARTING);
     AppRestart appStart = new AppRestart(app.appId(), isFullRestart);
     Method cmd = makeMethod(CMD_APP_RESTART, appStart);
     sendCommand(app.getController(), cmd);
   }
 
-  private void appStopped(AppStop started, FlutterDaemonController controller) {
+  private void appStopped(AppStop stopped, FlutterDaemonController controller) {
     Stream<Command> starts = findAllPendingCmds(controller).stream().filter(c -> {
       Params p = c.method.params;
       if (p instanceof AppStop) {
         AppStop a = (AppStop)p;
-        if (a.appId.equals(started.appId)) return true;
+        if (a.appId.equals(stopped.appId)) return true;
       }
       return false;
     });
     Optional<Command> opt = starts.findFirst();
     assert (opt.isPresent());
+    RunningFlutterApp app = findApp(controller, stopped.appId);
+    if (app != null) {
+      app.changeState(FlutterApp.State.TERMINATED);
+    }
     Command cmd = opt.get();
     synchronized (myLock) {
-      myResponses.put(cmd.method, started);
+      myResponses.put(cmd.method, stopped);
       myService.schedulePolling();
     }
   }
@@ -277,6 +285,10 @@ public class FlutterAppManager {
     controller.sendCommand(GSON.toJson(method), this);
     addPendingCmd(method.id, new Command(method, controller));
     return method;
+  }
+
+  private void finishCommand(RunningFlutterApp app, AppLog message, FlutterDaemonController controller) {
+    app.changeState(FlutterApp.State.STARTED);
   }
 
   @NotNull
@@ -359,6 +371,10 @@ public class FlutterAppManager {
       }
     }
     else {
+      String text = message.log.trim();
+      if (text.equals("Application running.") || text.contains("Hot reload") || text.contains("Reloaded")) {
+        finishCommand(app, message, controller);
+      }
       app.getConsole().print(message.log + "\n", ConsoleViewContentType.NORMAL_OUTPUT);
     }
   }
@@ -529,7 +545,8 @@ public class FlutterAppManager {
         if (prim.getAsBoolean()) {
           manager.appStopped(this, controller);
         }
-      } else {
+      }
+      else {
         prim = obj.getAsJsonPrimitive("error");
         if (prim != null) {
           // Apparently the daemon does not find apps started in release mode.

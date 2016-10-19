@@ -11,6 +11,9 @@ import com.intellij.xdebugger.XDebugSession;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import static io.flutter.run.daemon.FlutterAppManager.AppStarted;
 
 /**
@@ -128,6 +131,19 @@ public interface FlutterApp {
   void sessionResumed();
 
   void forceResume();
+
+  void changeState(State newState);
+
+  void addStateListener(StateListener listener);
+
+  void removeStateListener(StateListener listener);
+
+  public interface StateListener {
+
+    void stateChanged(State newState);
+  }
+
+  public enum State {STARTING, STARTED, TERMINATING, TERMINATED}
 }
 
 class RunningFlutterApp implements FlutterApp {
@@ -145,6 +161,8 @@ class RunningFlutterApp implements FlutterApp {
   private String myBaseUri;
   private ConsoleView myConsole;
   private XDebugSession mySesionHook;
+  private State myState;
+  private List<StateListener> myListeners = new ArrayList<>();
 
   public RunningFlutterApp(@NotNull FlutterDaemonService service,
                            @NotNull FlutterDaemonController controller,
@@ -301,5 +319,22 @@ class RunningFlutterApp implements FlutterApp {
     if (mySesionHook != null && mySesionHook.isPaused()) {
       mySesionHook.resume();
     }
+  }
+
+  @Override
+  public void changeState(State newState) {
+    myState = newState;
+    myListeners.iterator().forEachRemaining(x -> x.stateChanged(myState));
+  }
+
+  @Override
+  public void addStateListener(StateListener listener) {
+    myListeners.add(listener);
+    listener.stateChanged(myState);
+  }
+
+  @Override
+  public void removeStateListener(StateListener listener) {
+    myListeners.remove(null);
   }
 }
