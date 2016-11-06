@@ -6,12 +6,17 @@
 
   <category>Custom Languages</category>
 
-  <version>0.1.4</version>
+  <version>0.1.4.1</version>
 
   <idea-version since-build="162.1" until-build="163.*"/>
 
 <change-notes>
 <![CDATA[
+0.1.4.1:
+<ul>
+  <li>removed an exception notification when we receive unknown events from the flutter tools</li>
+</ul>
+
 0.1.4:
 <ul>
   <li>first public release</li>
