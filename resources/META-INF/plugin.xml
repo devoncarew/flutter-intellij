@@ -75,7 +75,6 @@
   </actions>
 
   <extensions defaultExtensionNs="com.intellij">
-
     <consoleInputFilterProvider implementation="io.flutter.run.daemon.DaemonJsonInputFilterProvider" />?
     <postStartupActivity implementation="io.flutter.FlutterInitializer"/>
     <applicationService serviceInterface="io.flutter.run.daemon.FlutterDaemonService"
@@ -84,6 +83,8 @@
     <configurationType implementation="io.flutter.run.FlutterRunConfigurationType"/>
     <runConfigurationProducer implementation="io.flutter.run.FlutterRunConfigurationProducer"/>
     <programRunner implementation="io.flutter.run.FlutterRunner"/>
+
+    <configurationType implementation="io.flutter.run.FlutterBazelConfigurationType"/>
 
     <moduleType id="FLUTTER_MODULE_TYPE" implementationClass="io.flutter.module.FlutterModuleType"/>
 
