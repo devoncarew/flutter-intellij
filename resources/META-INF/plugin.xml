@@ -165,6 +165,9 @@
       <action id="flutter.gettingStarted" class="io.flutter.actions.FlutterGettingStarted"
               text="Getting Started"
               description="View the online getting started documentation"/>
+      <action id="flutter.showWidgetGallery" class="io.flutter.actions.FlutterWidgetGallery"
+              text="View Widget Gallery"
+              description="Open the Flutter widget gallery view"/>
       <separator/>
       <action id="flutter.upgrade" class="io.flutter.actions.FlutterUpgradeAction"
               text="Flutter Upgrade"
@@ -272,6 +275,14 @@
     <projectService serviceInterface="io.flutter.view.FlutterView"
                     serviceImplementation="io.flutter.view.FlutterView"
                     overrides="false"/>
+
+    <toolWindow id="Widget Gallery" anchor="right" icon="FlutterIcons.Flutter"
+                factoryClass="io.flutter.gallery.GalleryViewFactory"
+                conditionClass="io.flutter.gallery.GalleryViewCondition"/>
+    <projectService serviceInterface="io.flutter.gallery.GalleryView"
+                    serviceImplementation="io.flutter.gallery.GalleryView"
+                    overrides="false"/>
+
     <projectOpenProcessor implementation="io.flutter.project.FlutterProjectOpenProcessor" order="first"/>
 
     <localInspection bundle="io.flutter.FlutterBundle" key="outdated.dependencies.inspection.name"
