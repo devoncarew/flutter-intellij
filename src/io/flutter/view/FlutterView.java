@@ -20,9 +20,14 @@ import com.intellij.openapi.ui.SimpleToolWindowPanel;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowManager;
 import com.intellij.openapi.wm.ex.ToolWindowEx;
+import com.intellij.ui.IdeBorderFactory;
+import com.intellij.ui.ScrollPaneFactory;
+import com.intellij.ui.SideBorder;
+import com.intellij.ui.TreeSpeedSearch;
 import com.intellij.ui.content.Content;
 import com.intellij.ui.content.ContentFactory;
 import com.intellij.ui.content.ContentManager;
+import com.intellij.ui.treeStructure.Tree;
 import icons.FlutterIcons;
 import io.flutter.FlutterBundle;
 import io.flutter.FlutterInitializer;
@@ -34,12 +39,14 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
+import javax.swing.tree.DefaultMutableTreeNode;
+import javax.swing.tree.DefaultTreeModel;
+import javax.swing.tree.TreeModel;
 import java.awt.*;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-// TODO(devoncarew): Display an fps graph.
 // TODO(devoncarew): Have a pref setting for opening when starting a debug session.
 
 @com.intellij.openapi.components.State(
@@ -57,6 +64,8 @@ public class FlutterView implements PersistentStateComponent<FlutterView.State>,
 
   @Nullable
   FlutterApp app;
+
+  FrameChartComponent frameChart;
 
   public FlutterView(@NotNull Project project) {
     myProject = project;
@@ -108,6 +117,62 @@ public class FlutterView implements PersistentStateComponent<FlutterView.State>,
     final ContentManager contentManager = toolWindow.getContentManager();
     contentManager.addContent(toolContent);
     contentManager.setSelectedContent(toolContent);
+
+    // Create the frame chart.
+    final FramesModel model = new FramesModel();
+    fillWithSampleData(model);
+    frameChart = new FrameChartComponent(model);
+    mainContent.add(frameChart, BorderLayout.NORTH);
+    frameChart.setBorder(IdeBorderFactory.createBorder(SideBorder.BOTTOM));
+
+    // TODO(devoncarew): Temporary placeholder for a widgets tree.
+    final Tree tree = new Tree(createSampleTreeModel());
+    // ColoredTreeCellRenderer, PresentableNodeDescriptor
+    new TreeSpeedSearch(tree);
+    mainContent.add(ScrollPaneFactory.createScrollPane(tree), BorderLayout.CENTER);
+  }
+
+  private static TreeModel createSampleTreeModel() {
+    final DefaultMutableTreeNode root = new DefaultMutableTreeNode("JTree");
+    DefaultMutableTreeNode parent;
+
+    parent = new DefaultMutableTreeNode("colors");
+    root.add(parent);
+    parent.add(new DefaultMutableTreeNode("blue"));
+    parent.add(new DefaultMutableTreeNode("violet"));
+    parent.add(new DefaultMutableTreeNode("red"));
+    parent.add(new DefaultMutableTreeNode("yellow"));
+
+    parent = new DefaultMutableTreeNode("sports");
+    root.add(parent);
+    parent.add(new DefaultMutableTreeNode("basketball"));
+    parent.add(new DefaultMutableTreeNode("soccer"));
+    parent.add(new DefaultMutableTreeNode("football"));
+    parent.add(new DefaultMutableTreeNode("hockey"));
+
+    parent = new DefaultMutableTreeNode("food");
+    root.add(parent);
+    parent.add(new DefaultMutableTreeNode("hot dogs"));
+    parent.add(new DefaultMutableTreeNode("pizza"));
+    parent.add(new DefaultMutableTreeNode("ravioli"));
+    parent.add(new DefaultMutableTreeNode("bananas"));
+    return new DefaultTreeModel(root);
+  }
+
+  private static void fillWithSampleData(FramesModel model) {
+    int lastStart = 0;
+
+    for (int i = 0; i < 60; i++) {
+      final int duration = (int)Math.round(Math.random() * 18000 + 1000);
+      model.addFrame(new Frame(i + 1, lastStart, duration));
+      lastStart = duration + 10 * 1000;
+      if (Math.random() > 0.85) {
+        lastStart += 400 * 1000;
+      }
+      if (i == 40) {
+        model.markReload();
+      }
+    }
   }
 
   /**
