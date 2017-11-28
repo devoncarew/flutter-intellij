@@ -5,8 +5,10 @@
  */
 package io.flutter.run;
 
+import com.google.gson.JsonObject;
 import com.intellij.execution.ExecutionResult;
 import com.intellij.execution.runners.ExecutionEnvironment;
+import com.intellij.execution.ui.ConsoleViewContentType;
 import com.intellij.execution.ui.RunnerLayoutUi;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.DefaultActionGroup;
@@ -16,14 +18,19 @@ import com.intellij.ui.GuiUtils;
 import com.intellij.ui.content.Content;
 import com.intellij.xdebugger.XDebugSession;
 import com.jetbrains.lang.dart.ide.runner.server.vmService.DartVmServiceDebugProcessZ;
+import com.jetbrains.lang.dart.ide.runner.server.vmService.VmServiceConsumers;
 import com.jetbrains.lang.dart.util.DartUrlResolver;
 import io.flutter.actions.ReloadFlutterApp;
 import io.flutter.actions.RestartFlutterApp;
 import io.flutter.run.daemon.FlutterApp;
 import io.flutter.run.daemon.RunMode;
+import io.flutter.utils.VmServiceListenerAdapter;
 import io.flutter.view.FlutterViewMessages;
 import io.flutter.view.OpenFlutterViewAction;
 import org.dartlang.vm.service.VmService;
+import org.dartlang.vm.service.VmServiceListener;
+import org.dartlang.vm.service.element.Event;
+import org.dartlang.vm.service.element.InstanceRef;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -56,6 +63,43 @@ public class FlutterDebugProcess extends DartVmServiceDebugProcessZ {
   @Override
   protected void onVmConnected(@NotNull VmService vmService) {
     app.setFlutterDebugProcess(this);
+    // TODO: We should add this listener earlier in the process, so that we don't loose messages.
+
+    vmService.addVmServiceListener(new VmServiceListenerAdapter() {
+      @Override
+      public void received(String streamId, Event event) {
+        // TODO: I would instead like to listen for "Logging"
+        if ("_Logging".equals(streamId)) {
+          final JsonObject logRecord = event.getJson().getAsJsonObject("logRecord");
+
+          if (logRecord != null) {
+            // TODO: be defensive here; these are all optional
+            final int sequenceNumber = logRecord.getAsJsonPrimitive("sequenceNumber").getAsInt();
+            //final long time = logRecord.getAsJsonPrimitive("time").getAsLong();
+            final int level = logRecord.getAsJsonPrimitive("level").getAsInt();
+            final InstanceRef loggerName = new InstanceRef(logRecord.getAsJsonObject("loggerName"));
+            final InstanceRef message = new InstanceRef(logRecord.getAsJsonObject("message"));
+            final boolean messageTruncated = message.getValueAsStringIsTruncated();
+
+            // TODO: pipe to a logger manager; have that pipe to the debug console
+            // SYSTEM_OUTPUT, USER_INPUT
+            getSession().getConsoleView().print(
+              "[" + loggerName.getValueAsString() + "] " + sequenceNumber + " ", ConsoleViewContentType.SYSTEM_OUTPUT);
+            getSession().getConsoleView().print(
+              message.getValueAsString() + (messageTruncated ? "..." : "") + "\n", ConsoleViewContentType.NORMAL_OUTPUT);
+
+            // sequenceNumber, time, level, loggerName, message, error, stackTrace
+            //System.out.println(logRecord);
+            // nulls could be null, or could be
+            // "{"type":"@Instance","class":{"type":"@Class","fixedId":true,"id":"classes/122","name":"Null"},
+            //   "kind":"Null","fixedId":true,"id":"objects/null","valueAsString":"null"}"
+          }
+        }
+      }
+    });
+
+    vmService.streamListen("_Logging", VmServiceConsumers.EMPTY_SUCCESS_CONSUMER);
+
     FlutterViewMessages.sendDebugActive(getSession().getProject(), app, vmService);
   }
 
