@@ -16,6 +16,7 @@ import java.util.List;
 
 public class FlutterSettings {
   private static final String reloadOnSaveKey = "io.flutter.reloadOnSave";
+  private static final String reloadAllDevicesKey = "io.flutter.reloadAllDevicesKey";
   private static final String openInspectorOnAppLaunchKey = "io.flutter.openInspectorOnAppLaunch";
   private static final String verboseLoggingKey = "io.flutter.verboseLogging";
   private static final String previewDart2Key = "io.flutter.previewDart2";
@@ -71,6 +72,9 @@ public class FlutterSettings {
     if (isReloadOnSave()) {
       analytics.sendEvent("settings", afterLastPeriod(reloadOnSaveKey));
     }
+    if (isReloadAllDevices()) {
+      analytics.sendEvent("settings", afterLastPeriod(reloadAllDevicesKey));
+    }
     if (isFormatCodeOnSave()) {
       analytics.sendEvent("settings", afterLastPeriod(formatCodeOnSaveKey));
 
@@ -111,6 +115,22 @@ public class FlutterSettings {
     return getPropertiesComponent().getBoolean(reloadOnSaveKey, true);
   }
 
+  public void setReloadOnSave(boolean value) {
+    getPropertiesComponent().setValue(reloadOnSaveKey, value, true);
+
+    fireEvent();
+  }
+
+  public boolean isReloadAllDevices() {
+    return getPropertiesComponent().getBoolean(reloadAllDevicesKey, false);
+  }
+
+  public void setReloadAllDevices(boolean value) {
+    getPropertiesComponent().setValue(reloadAllDevicesKey, value, true);
+
+    fireEvent();
+  }
+
   public boolean isTrackWidgetCreation() {
     return getPropertiesComponent().getBoolean(trackWidgetCreationKey, false);
   }
@@ -121,12 +141,6 @@ public class FlutterSettings {
     fireEvent();
   }
 
-
-  public void setReloadOnSave(boolean value) {
-    getPropertiesComponent().setValue(reloadOnSaveKey, value, true);
-
-    fireEvent();
-  }
 
   public boolean isFormatCodeOnSave() {
     return getPropertiesComponent().getBoolean(formatCodeOnSaveKey, false);

@@ -69,6 +69,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
+// TODO: have reload on save check isReloadAllDevices
+
+// TODO: have the main flutter action check isReloadAllDevices
+// TODO:  and, use the new FlutterAppManager class to determine front-most
+
+
 /**
  * Handle the mechanics of performing a hot reload on file save.
  */
@@ -187,6 +193,23 @@ public class FlutterReloadManager {
     // small pause to return error results in the (relatively infrequent) case where the user makes a bad
     // edit and immediately hits save.
     final int reloadDelayMs = 125;
+
+    final List<FlutterApp> apps = FlutterAppManager.getInstance(myProject).getApps();
+    if (apps.size() > 1) {
+      // TODO: temp
+
+      JobScheduler.getScheduler().schedule(() -> {
+        clearLastNotification();
+
+        for (FlutterApp flutterApp : apps) {
+          flutterApp.performHotReload(file, supportsPauseAfterReload()).thenAccept(result -> {
+            System.out.println(flutterApp.deviceId() + ": " + result);
+          });
+        }
+      }, reloadDelayMs, TimeUnit.MILLISECONDS);
+
+      return;
+    }
 
     handlingSave.set(true);
 
