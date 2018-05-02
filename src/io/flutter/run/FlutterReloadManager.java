@@ -195,19 +195,8 @@ public class FlutterReloadManager {
     final int reloadDelayMs = 125;
 
     final List<FlutterApp> apps = FlutterAppManager.getInstance(myProject).getApps();
-    if (apps.size() > 1) {
-      // TODO: temp
-
-      JobScheduler.getScheduler().schedule(() -> {
-        clearLastNotification();
-
-        for (FlutterApp flutterApp : apps) {
-          flutterApp.performHotReload(file, supportsPauseAfterReload()).thenAccept(result -> {
-            System.out.println(flutterApp.deviceId() + ": " + result);
-          });
-        }
-      }, reloadDelayMs, TimeUnit.MILLISECONDS);
-
+    if (apps.size() > 1 && FlutterSettings.getInstance().isReloadAllDevices()) {
+      reloadAllDevices();
       return;
     }
 
@@ -233,7 +222,7 @@ public class FlutterReloadManager {
       final Notification notification = showRunNotification(app, null, "Reloading…", false);
       final long startTime = System.currentTimeMillis();
 
-      app.performHotReload(file, supportsPauseAfterReload()).thenAccept(result -> {
+      app.performHotReload(supportsPauseAfterReload()).thenAccept(result -> {
         if (!result.ok()) {
           notification.expire();
           showRunNotification(app, "Hot Reload Error", result.getMessage(), true);
@@ -259,11 +248,49 @@ public class FlutterReloadManager {
     }, reloadDelayMs, TimeUnit.MILLISECONDS);
   }
 
-  public void saveAllAndReload(@NotNull FlutterApp app, @Nullable VirtualFile currentFile) {
+  public void reloadAllDevices() {
+    FileDocumentManager.getInstance().saveAllDocuments();
+
+    final int reloadDelayMs = 125;
+
+    final List<FlutterApp> apps = FlutterAppManager.getInstance(myProject).getApps();
+
+    System.out.println("reloadAllDevices(): " + apps.size() + " devices");
+
+    JobScheduler.getScheduler().schedule(() -> {
+      clearLastNotification();
+
+      for (FlutterApp flutterApp : apps) {
+        flutterApp.performHotReload(supportsPauseAfterReload()).thenAccept(result -> {
+          System.out.println(flutterApp.deviceId() + ": " + result);
+        });
+      }
+    }, reloadDelayMs, TimeUnit.MILLISECONDS);
+  }
+
+  public void restartAllDevices() {
+    FileDocumentManager.getInstance().saveAllDocuments();
+
+    final List<FlutterApp> apps = FlutterAppManager.getInstance(myProject).getApps();
+
+    System.out.println("restartAllDevices(): " + apps.size() + " devices");
+
+    JobScheduler.getScheduler().schedule(() -> {
+      clearLastNotification();
+
+      for (FlutterApp flutterApp : apps) {
+        flutterApp.performRestartApp().thenAccept(result -> {
+          System.out.println(flutterApp.deviceId() + ": " + result);
+        });
+      }
+    }, 0, TimeUnit.MILLISECONDS);
+  }
+
+  public void saveAllAndReload(@NotNull FlutterApp app) {
     if (app.isStarted()) {
       FileDocumentManager.getInstance().saveAllDocuments();
 
-      app.performHotReload(currentFile, supportsPauseAfterReload()).thenAccept(result -> {
+      app.performHotReload(supportsPauseAfterReload()).thenAccept(result -> {
         if (!result.ok()) {
           showRunNotification(app, "Hot Reload", result.getMessage(), true);
         }

@@ -126,7 +126,7 @@ public class FlutterSettings {
   }
 
   public void setReloadAllDevices(boolean value) {
-    getPropertiesComponent().setValue(reloadAllDevicesKey, value, true);
+    getPropertiesComponent().setValue(reloadAllDevicesKey, value);
 
     fireEvent();
   }

@@ -53,16 +53,7 @@ public class ReloadFlutterApp extends FlutterAppAction {
     else {
       // Else perform a hot reload.
       FlutterInitializer.sendAnalyticsAction(this);
-      final Editor editor = FileEditorManager.getInstance(project).getSelectedTextEditor();
-
-      VirtualFile file = editor == null ? null : FileDocumentManager.getInstance().getFile(editor.getDocument());
-      if (file != null && !file.isInLocalFileSystem()) {
-        file = null;
-      }
-      if (file != null && !FlutterUtils.isDartFile(file)) {
-        file = null;
-      }
-      FlutterReloadManager.getInstance(project).saveAllAndReload(getApp(), file);
+      FlutterReloadManager.getInstance(project).saveAllAndReload(getApp());
     }
   }
 }
