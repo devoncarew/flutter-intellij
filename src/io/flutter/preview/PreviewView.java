@@ -23,6 +23,8 @@ import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.event.CaretEvent;
 import com.intellij.openapi.editor.event.CaretListener;
 import com.intellij.openapi.fileEditor.*;
+import com.intellij.openapi.module.Module;
+import com.intellij.openapi.module.ModuleUtil;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.SimpleToolWindowPanel;
 import com.intellij.openapi.ui.Splitter;
@@ -47,6 +49,7 @@ import icons.FlutterIcons;
 import io.flutter.FlutterInitializer;
 import io.flutter.FlutterMessages;
 import io.flutter.FlutterUtils;
+import io.flutter.console.FlutterConsoles;
 import io.flutter.dart.FlutterDartAnalysisServer;
 import io.flutter.dart.FlutterOutlineListener;
 import io.flutter.inspector.FlutterWidget;
@@ -69,6 +72,8 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -162,7 +167,7 @@ public class PreviewView implements PersistentStateComponent<PreviewViewState>, 
 
   final RenderHelper.Listener renderListener = new RenderHelper.Listener() {
     @Override
-    public void onResponse(FlutterOutline widget, JsonObject response) {
+    public void onResponse(@NotNull FlutterOutline widget, @NotNull JsonObject response) {
       ApplicationManager.getApplication().invokeLater(() -> {
         if (previewArea != null) {
           previewArea.show(currentOutline, widget, response);
@@ -177,24 +182,26 @@ public class PreviewView implements PersistentStateComponent<PreviewViewState>, 
     }
 
     @Override
-    public void onFailure(RenderProblemKind kind, @Nullable FlutterOutline widget) {
+    public void onFailure(@NotNull RenderProblemKind kind, @Nullable FlutterOutline widget) {
       ApplicationManager.getApplication().invokeLater(() -> {
         if (previewArea != null) {
           switch (kind) {
-            case EXCEPTION:
-            case NO_TEMPORARY_DIRECTORY:
-              previewArea.clear("Encountered an exception during rendering");
-              break;
             case NO_WIDGET:
               previewArea.clear(PreviewArea.NO_WIDGET_MESSAGE);
-              setSplitterProportion(0.9f);
+              minimizePreviewArea();
               break;
             case NOT_RENDERABLE_WIDGET:
               assert widget != null;
               showNotRenderableInPreviewArea(widget);
               break;
+            case NO_TEMPORARY_DIRECTORY:
+              previewArea.clear("Internal error");
+              break;
             case TIMEOUT:
               previewArea.clear("Timeout during rendering");
+              break;
+            case INVALID_JSON:
+              previewArea.clear("Invalid JSON response");
               break;
           }
         }
@@ -202,15 +209,32 @@ public class PreviewView implements PersistentStateComponent<PreviewViewState>, 
     }
 
     @Override
-    public void onRenderableWidget(FlutterOutline widget) {
+    public void onRenderableWidget(@NotNull FlutterOutline widget) {
       setSplitterProportion(getState().getSplitterProportion());
       final Dimension renderSize = previewArea.getRenderSize();
       myRenderHelper.setSize(renderSize.width, renderSize.height);
     }
+
+    @Override
+    public void onLocalException(@NotNull FlutterOutline widget, @NotNull Throwable localException) {
+      ApplicationManager.getApplication().invokeLater(() -> showLocalException(localException));
+    }
+
+    @Override
+    public void onRemoteException(@NotNull FlutterOutline widget, @NotNull JsonObject remoteException) {
+      ApplicationManager.getApplication().invokeLater(() -> showRemoteException(remoteException));
+    }
   };
+
+  private void minimizePreviewArea() {
+    // TODO(devoncarew): We should size the preview area to a fixed, smaller size (based on the largest
+    //                   non-preview sized content).
+    setSplitterProportion(0.85f);
+  }
 
   public PreviewView(@NotNull Project project) {
     this.project = project;
+
     flutterAnalysisServer = FlutterDartAnalysisServer.getInstance(project);
 
     if (FlutterSettings.getInstance().isShowPreviewArea()) {
@@ -262,7 +286,7 @@ public class PreviewView implements PersistentStateComponent<PreviewViewState>, 
   }
 
   @Override
-  public void loadState(PreviewViewState state) {
+  public void loadState(@NotNull PreviewViewState state) {
     this.state.copyFrom(state);
   }
 
@@ -838,7 +862,7 @@ public class PreviewView implements PersistentStateComponent<PreviewViewState>, 
 
     // Now actually select the node.
     tree.removeTreeSelectionListener(treeSelectionListener);
-    tree.setSelectionPaths(selectedPaths.toArray(new TreePath[selectedPaths.size()]));
+    tree.setSelectionPaths(selectedPaths.toArray(new TreePath[0]));
     tree.addTreeSelectionListener(treeSelectionListener);
 
     // JTree attempts to show as much of the node as possible, so scrolls horizontally.
@@ -897,7 +921,45 @@ public class PreviewView implements PersistentStateComponent<PreviewViewState>, 
 
     previewArea.clear(panel);
 
-    setSplitterProportion(0.9f);
+    minimizePreviewArea();
+  }
+
+  private void showLocalException(@NotNull Throwable localException) {
+    final JPanel panel = new JPanel();
+    panel.setLayout(new MigLayout("insets 0", "[grow, center]", "[grow, bottom][grow 200, top]"));
+
+    panel.add(new JBLabel("Encountered an exception during rendering"), "cell 0 0");
+
+    final LinkLabel linkLabel = LinkLabel.create("Show exception...", () -> {
+      final StringWriter stringWriter = new StringWriter();
+      final PrintWriter printWriter = new PrintWriter(stringWriter);
+      printWriter.println(localException.getMessage());
+      localException.printStackTrace(printWriter);
+      final Module module = currentFile == null ? null : ModuleUtil.findModuleForFile(currentFile, project);
+      FlutterConsoles.displayMessage(project, module, stringWriter.toString().trim(), true);
+    });
+    panel.add(linkLabel, "cell 0 1");
+
+    previewArea.clear(panel);
+  }
+
+  private void showRemoteException(@NotNull JsonObject remoteException) {
+    final JPanel panel = new JPanel();
+    panel.setLayout(new MigLayout("insets 0", "[grow, center]", "[grow, bottom][grow 200, top]"));
+
+    panel.add(new JBLabel("Encountered an exception during rendering"), "cell 0 0");
+
+    final LinkLabel linkLabel = LinkLabel.create("Show exception...", () -> {
+      final StringWriter stringWriter = new StringWriter();
+      final PrintWriter printWriter = new PrintWriter(stringWriter);
+      printWriter.println(remoteException.get("exception").getAsString());
+      printWriter.println(remoteException.get("stackTrace").getAsString());
+      final Module module = currentFile == null ? null : ModuleUtil.findModuleForFile(currentFile, project);
+      FlutterConsoles.displayMessage(project, module, stringWriter.toString().trim(), true);
+    });
+    panel.add(linkLabel, "cell 0 1");
+
+    previewArea.clear(panel);
   }
 
   private void applyChangeAndShowException(SourceChange change) {

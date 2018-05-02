@@ -27,7 +27,6 @@ import io.flutter.coverage.FlutterLiveCoverageManager;
 import io.flutter.editor.FlutterSaveActionsManager;
 import io.flutter.pub.PubRoot;
 import io.flutter.pub.PubRoots;
-import io.flutter.run.FlutterAppManager;
 import io.flutter.run.FlutterReloadManager;
 import io.flutter.run.FlutterRunNotifications;
 import io.flutter.run.daemon.DeviceService;
@@ -168,6 +167,11 @@ public class FlutterInitializer implements StartupActivity {
       FlutterModuleUtils.ensureRunConfigSelected(project);
     }
 
+    if (hasFlutterModule) {
+      // Check to see if we're on a supported version of Android Studio; warn otherwise.
+      performAndroidStudioCanaryCheck();
+    }
+
     FlutterRunNotifications.init(project);
 
     // Start the live coverage manager.
@@ -248,5 +252,18 @@ public class FlutterInitializer implements StartupActivity {
     }
 
     ApplicationManager.getApplication().runWriteAction(() -> wanted.setCurrent(project));
+  }
+
+  private static void performAndroidStudioCanaryCheck() {
+    if (!FlutterUtils.isAndroidStudio()) {
+      return;
+    }
+
+    final ApplicationInfo info = ApplicationInfo.getInstance();
+    if (info.getFullVersion().contains("Canary")) {
+      FlutterMessages.showWarning(
+        "Unsupported Android Studio version",
+        "Canary versions of Android Studio are not supported by the Flutter plugin.");
+    }
   }
 }
