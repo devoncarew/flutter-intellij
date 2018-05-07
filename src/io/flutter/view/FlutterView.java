@@ -42,7 +42,6 @@ import com.intellij.util.ui.UIUtil;
 import icons.FlutterIcons;
 import io.flutter.FlutterBundle;
 import io.flutter.FlutterInitializer;
-import io.flutter.FlutterUtils;
 import io.flutter.inspector.InspectorService;
 import io.flutter.run.daemon.FlutterApp;
 import io.flutter.run.daemon.FlutterDevice;
@@ -381,15 +380,16 @@ public class FlutterView implements PersistentStateComponent<FlutterViewState>, 
       return;
     }
 
-    if (isDisplayingEmptyContent()) {
-      removeEmptyContent(toolWindow);
-    }
+    ApplicationManager.getApplication().invokeAndWait(() -> {
+      if (isDisplayingEmptyContent()) {
+        removeEmptyContent(toolWindow);
+      }
+      toolWindow.setIcon(ExecutionUtil.getLiveIndicator(FlutterIcons.Flutter_13));
 
-    toolWindow.setIcon(ExecutionUtil.getLiveIndicator(FlutterIcons.Flutter_13));
+      listenForRenderTreeActivations(toolWindow);
 
-    listenForRenderTreeActivations(toolWindow);
-
-    addInspector(app, inspectorService, toolWindow);
+      addInspector(app, inspectorService, toolWindow);
+    });
 
     app.getVmService().addVmServiceListener(new VmServiceListenerAdapter() {
       @Override
@@ -448,22 +448,18 @@ public class FlutterView implements PersistentStateComponent<FlutterViewState>, 
       return;
     }
 
-    toolWindow.setIcon(FlutterIcons.Flutter_13);
+    ApplicationManager.getApplication().invokeAndWait(() -> {
+      toolWindow.setIcon(FlutterIcons.Flutter_13);
 
-    // TODO(devoncarew): Remove this when we no longer support 2017.3.
-    // https://github.com/flutter/flutter-intellij/issues/2029
-    if (FlutterUtils.is2017_3()) {
-      return;
-    }
-
-    // Display a 'No running applications' message.
-    final ContentManager contentManager = toolWindow.getContentManager();
-    final JPanel panel = new JPanel(new BorderLayout());
-    final JLabel label = new JLabel("No running applications", SwingConstants.CENTER);
-    label.setForeground(UIUtil.getLabelDisabledForeground());
-    panel.add(label, BorderLayout.CENTER);
-    emptyContent = contentManager.getFactory().createContent(panel, null, false);
-    contentManager.addContent(emptyContent);
+      // Display a 'No running applications' message.
+      final ContentManager contentManager = toolWindow.getContentManager();
+      final JPanel panel = new JPanel(new BorderLayout());
+      final JLabel label = new JLabel("No running applications", SwingConstants.CENTER);
+      label.setForeground(UIUtil.getLabelDisabledForeground());
+      panel.add(label, BorderLayout.CENTER);
+      emptyContent = contentManager.getFactory().createContent(panel, null, false);
+      contentManager.addContent(emptyContent);
+    });
   }
 
   private boolean isDisplayingEmptyContent() {
