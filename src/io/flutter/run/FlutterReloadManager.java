@@ -25,7 +25,6 @@ import com.intellij.openapi.components.ServiceManager;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.Editor;
-import com.intellij.openapi.editor.ex.EditorEx;
 import com.intellij.openapi.fileEditor.FileDocumentManager;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.project.Project;
@@ -49,10 +48,7 @@ import io.flutter.actions.ProjectActions;
 import io.flutter.actions.ReloadFlutterApp;
 import io.flutter.pub.PubRoot;
 import io.flutter.pub.PubRoots;
-import io.flutter.run.daemon.DeviceService;
-import io.flutter.run.daemon.FlutterApp;
-import io.flutter.run.daemon.FlutterDevice;
-import io.flutter.run.daemon.RunMode;
+import io.flutter.run.daemon.*;
 import io.flutter.settings.FlutterSettings;
 import org.dartlang.analysis.server.protocol.AnalysisErrorSeverity;
 import org.jetbrains.annotations.NotNull;
@@ -64,6 +60,7 @@ import java.io.File;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -182,12 +179,9 @@ public class FlutterReloadManager {
       return;
     }
 
-    if (!(editor instanceof EditorEx)) {
+    if (!app.getLaunchMode().supportsReload()) {
       return;
     }
-
-    final EditorEx editorEx = (EditorEx)editor;
-    final VirtualFile file = editorEx.getVirtualFile();
 
     // Add an arbitrary 125ms delay to allow analysis to catch up. This delay gives the analysis server a
     // small pause to return error results in the (relatively infrequent) case where the user makes a bad
@@ -279,9 +273,14 @@ public class FlutterReloadManager {
       clearLastNotification();
 
       for (FlutterApp flutterApp : apps) {
-        flutterApp.performRestartApp().thenAccept(result -> {
+
+        try {
+          final DaemonApi.RestartResult result = flutterApp.performRestartApp().get();
           System.out.println(flutterApp.deviceId() + ": " + result);
-        });
+        }
+        catch (InterruptedException | ExecutionException e) {
+          e.printStackTrace();
+        }
       }
     }, 0, TimeUnit.MILLISECONDS);
   }

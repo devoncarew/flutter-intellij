@@ -25,11 +25,11 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.util.Key;
 import com.intellij.openapi.util.text.StringUtil;
-import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.util.EventDispatcher;
 import com.intellij.util.concurrency.AppExecutorUtil;
 import com.jetbrains.lang.dart.ide.runner.ObservatoryConnector;
 import io.flutter.FlutterInitializer;
+import io.flutter.logging.FlutterLog;
 import io.flutter.perf.PerfService;
 import io.flutter.pub.PubRoot;
 import io.flutter.pub.PubRoots;
@@ -69,7 +69,6 @@ public class FlutterApp {
   private final @NotNull ExecutionEnvironment myExecutionEnvironment;
   private final @NotNull DaemonApi myDaemonApi;
   private final @NotNull GeneralCommandLine myCommand;
-  private @Nullable VirtualFile myLastReloadFile;
 
   private @Nullable String myAppId;
   private @Nullable String myWsUrl;
@@ -90,10 +89,22 @@ public class FlutterApp {
   private final AtomicReference<State> myState = new AtomicReference<>(State.STARTING);
   private final EventDispatcher<FlutterAppListener> listenersDispatcher = EventDispatcher.create(FlutterAppListener.class);
 
+  private @NotNull final FlutterLog myFlutterLog = new FlutterLog();
   private final ObservatoryConnector myConnector;
   private FlutterDebugProcess myFlutterDebugProcess;
   private @Nullable VmService myVmService;
   private PerfService myPerfService;
+
+  private static final Key<FlutterApp> APP_KEY = Key.create("FlutterApp");
+
+  public static void addToEnvironment(@NotNull ExecutionEnvironment env, @NotNull FlutterApp app) {
+    env.putUserData(APP_KEY, app);
+  }
+
+  @Nullable
+  public static FlutterApp fromEnv(@NotNull ExecutionEnvironment env) {
+    return env.getUserData(APP_KEY);
+  }
 
   FlutterApp(@NotNull Project project,
              @Nullable Module module,
@@ -152,6 +163,11 @@ public class FlutterApp {
   }
 
   @NotNull
+  public FlutterLog getFlutterLog() {
+    return myFlutterLog;
+  }
+
+  @NotNull
   public GeneralCommandLine getCommand() {
     return myCommand;
   }
@@ -159,6 +175,18 @@ public class FlutterApp {
   @Nullable
   public static FlutterApp fromProcess(@NotNull ProcessHandler process) {
     return process.getUserData(FLUTTER_APP_KEY);
+  }
+
+  public static List<FlutterApp> fromProcesses(List<ProcessHandler> processes) {
+    final List<FlutterApp> apps = new ArrayList<>();
+
+    for (ProcessHandler process : processes) {
+      final FlutterApp app = fromProcess(process);
+      if (app != null) {
+        apps.add(app);
+      }
+    }
+    return apps;
   }
 
   @Nullable
@@ -190,8 +218,8 @@ public class FlutterApp {
                                  @NotNull RunMode mode,
                                  @NotNull FlutterDevice device,
                                  @NotNull GeneralCommandLine command,
-                                 @NotNull String analyticsStart,
-                                 @NotNull String analyticsStop)
+                                 @Nullable String analyticsStart,
+                                 @Nullable String analyticsStop)
     throws ExecutionException {
     LOG.info(analyticsStart + " " + project.getName() + " (" + mode.mode() + ")");
     LOG.info(command.toString());
@@ -200,7 +228,9 @@ public class FlutterApp {
     Disposer.register(project, process::destroyProcess);
 
     // Send analytics for the start and stop events.
-    FlutterInitializer.sendAnalyticsAction(analyticsStart);
+    if (analyticsStart != null) {
+      FlutterInitializer.sendAnalyticsAction(analyticsStart);
+    }
 
     final DaemonApi api = new DaemonApi(process);
     final FlutterApp app = new FlutterApp(project, module, mode, device, process, env, api, command);
@@ -209,7 +239,9 @@ public class FlutterApp {
       @Override
       public void processTerminated(@NotNull ProcessEvent event) {
         LOG.info(analyticsStop + " " + project.getName() + " (" + mode.mode() + ")");
-        FlutterInitializer.sendAnalyticsAction(analyticsStop);
+        if (analyticsStop != null) {
+          FlutterInitializer.sendAnalyticsAction(analyticsStop);
+        }
 
         // Send analytics about whether this session used the reload workflow, the restart workflow, or neither.
         final String workflowType = app.reloadCount > 0 ? "reload" : (app.restartCount > 0 ? "restart" : "none");

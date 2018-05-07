@@ -37,12 +37,17 @@ import com.intellij.xdebugger.XDebuggerManager;
 import com.jetbrains.lang.dart.ide.runner.DartExecutionHelper;
 import com.jetbrains.lang.dart.util.DartUrlResolver;
 import io.flutter.dart.DartPlugin;
+import io.flutter.logging.FlutterLog;
+import io.flutter.logging.FlutterLogView;
 import io.flutter.run.daemon.*;
+import io.flutter.settings.FlutterSettings;
 import io.flutter.view.OpenFlutterViewAction;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * Launches a flutter app, showing it in the console.
@@ -81,6 +86,18 @@ public class LaunchState extends CommandLineState {
     DaemonConsoleView.install(this, env, workDir);
   }
 
+  @Nullable
+  protected ConsoleView createConsole(@NotNull final Executor executor) throws ExecutionException {
+    if (FlutterLog.LOGGING_ENABLED) {
+      final FlutterApp app = FlutterApp.fromEnv(getEnvironment());
+      assert app != null;
+      return new FlutterLogView(app);
+    }
+    else {
+      return super.createConsole(executor);
+    }
+  }
+
   private RunContentDescriptor launch(@NotNull ExecutionEnvironment env) throws ExecutionException {
     FileDocumentManager.getInstance().saveAllDocuments();
 
@@ -92,6 +109,8 @@ public class LaunchState extends CommandLineState {
     final Project project = getEnvironment().getProject();
     final FlutterDevice device = DeviceService.getInstance(project).getSelectedDevice();
     final FlutterApp app = callback.createApp(device);
+    // Cache for use in console configuration.
+    FlutterApp.addToEnvironment(env, app);
 
     if (device == null) {
       Messages.showDialog(
@@ -326,32 +345,30 @@ public class LaunchState extends CommandLineState {
       final List<RunContentDescriptor> runningProcesses =
         ExecutionManager.getInstance(env.getProject()).getContentManager().getAllDescriptors();
 
-      final ProcessHandler process = getRunningAppProcess(launchState.runConfig);
-      if (process != null) {
-        final FlutterApp app = FlutterApp.fromProcess(process);
+      final List<ProcessHandler> processes = getRunningAppProcesses(launchState.runConfig);
+      if (!processes.isEmpty()) {
+        final List<FlutterApp> apps = FlutterApp.fromProcesses(processes);
+        final List<String> runningDevices = new ArrayList<>();
+        for (FlutterApp app : apps) {
+          runningDevices.add(app.deviceId());
+        }
         final String selectedDeviceId = getSelectedDeviceId(env.getProject());
 
-        if (app != null && StringUtil.equals(app.deviceId(), selectedDeviceId)) {
-          if (executorId.equals(app.getMode().mode())) {
-
-            if (!identicalCommands(app.getCommand(), launchState.runConfig.getCommand(env, app.device()))) {
-              // To be safe, relaunch as the arguments to launch have changed.
-              try {
-                // TODO(jacobr): ideally we shouldn't be synchronously waiting
-                // for futures like this but I don't see a better option.
-                // In practice this seems fine.
-                app.shutdownAsync().get();
-              }
-              catch (InterruptedException | java.util.concurrent.ExecutionException e) {
-                LOG.error(e);
-              }
-              return launchState.launch(env);
-            }
+        if (!apps.isEmpty() && runningDevices.contains(selectedDeviceId)) {
+          if (executorId.equals(apps.get(0).getMode().mode())) {
             final FlutterLaunchMode launchMode = FlutterLaunchMode.fromEnv(env);
-            if (launchMode.supportsReload() && app.isStarted()) {
+
+            if (launchMode.supportsReload() && apps.get(0).isStarted()) {
               // Map a re-run action to a flutter full restart.
-              FileDocumentManager.getInstance().saveAllDocuments();
-              app.performRestartApp();
+
+              if (FlutterSettings.getInstance().isReloadAllDevices() &&
+                  FlutterAppManager.getInstance(env.getProject()).getApps().size() > 1) {
+                FlutterReloadManager.getInstance(env.getProject()).restartAllDevices();
+              }
+              else {
+                FileDocumentManager.getInstance().saveAllDocuments();
+                FlutterAppManager.getInstance(env.getProject()).getActiveApp().performRestartApp();
+              }
             }
           }
 
@@ -391,6 +408,22 @@ public class LaunchState extends CommandLineState {
     }
 
     return null;
+  }
+
+  public static List<ProcessHandler> getRunningAppProcesses(RunConfig config) {
+    final List<ProcessHandler> processes = new ArrayList<>();
+    final Project project = config.getProject();
+    final List<RunContentDescriptor> runningProcesses =
+      ExecutionManager.getInstance(project).getContentManager().getAllDescriptors();
+
+    for (RunContentDescriptor descriptor : runningProcesses) {
+      final ProcessHandler process = descriptor.getProcessHandler();
+      if (process != null && !process.isProcessTerminated() && process.getUserData(FLUTTER_RUN_CONFIG_KEY) == config) {
+        processes.add(process);
+      }
+    }
+
+    return processes;
   }
 
   private static final Key<RunConfig> FLUTTER_RUN_CONFIG_KEY = new Key<>("FLUTTER_RUN_CONFIG_KEY");
