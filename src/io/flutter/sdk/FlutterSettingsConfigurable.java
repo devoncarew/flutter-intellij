@@ -169,16 +169,11 @@ public class FlutterSettingsConfigurable implements SearchableConfigurable {
       return true;
     }
 
-
     if (settings.isFormatCodeOnSave() != myFormatCodeOnSaveCheckBox.isSelected()) {
       return true;
     }
 
     if (settings.isOrganizeImportsOnSaveKey() != myOrganizeImportsOnSaveCheckBox.isSelected()) {
-      return true;
-    }
-
-    if (settings.isShowPreviewArea() != myShowPreviewAreaCheckBox.isSelected()) {
       return true;
     }
 
@@ -242,12 +237,11 @@ public class FlutterSettingsConfigurable implements SearchableConfigurable {
     FlutterInitializer.setCanReportAnalytics(myReportUsageInformationCheckBox.isSelected());
 
     final FlutterSettings settings = FlutterSettings.getInstance();
+
     settings.setReloadOnSave(myHotReloadOnSaveCheckBox.isSelected());
     settings.setReloadWithError(myHotReloadIgnoreErrorCheckBox.isSelected());
     settings.setFormatCodeOnSave(myFormatCodeOnSaveCheckBox.isSelected());
     settings.setOrganizeImportsOnSaveKey(myOrganizeImportsOnSaveCheckBox.isSelected());
-    settings.setShowPreviewArea(myShowPreviewAreaCheckBox.isSelected());
-
     settings.setShowBuildMethodGuides(myShowBuildMethodGuides.isSelected());
     settings.setShowMultipleChildrenGuides(myShowMultipleChildrenGuides.isSelected());
     settings.setShowBuildMethodsOnScrollbar(myShowBuildMethodsOnScrollbar.isSelected());
@@ -281,7 +275,6 @@ public class FlutterSettingsConfigurable implements SearchableConfigurable {
     myHotReloadIgnoreErrorCheckBox.setSelected(settings.isReloadWithError());
     myFormatCodeOnSaveCheckBox.setSelected(settings.isFormatCodeOnSave());
     myOrganizeImportsOnSaveCheckBox.setSelected(settings.isOrganizeImportsOnSaveKey());
-    myShowPreviewAreaCheckBox.setSelected(settings.isShowPreviewArea());
 
     myShowBuildMethodGuides.setSelected(settings.isShowBuildMethodGuides());
     myShowMultipleChildrenGuides.setSelected(settings.isShowMultipleChildrenGuides());
