@@ -81,7 +81,7 @@ public class DartVmServiceDebugProcess extends XDebugProcess {
     new OpenDartObservatoryUrlAction(null, () -> myVmConnected && !getSession().isStopped());
   private VmServiceWrapper myVmServiceWrapper;
   private String myLatestCurrentIsolateId;
-  private VmOpenSourceLocationListener myVmOpenSourceLocationListener;
+  private VmOpenSourceLocationListener mySourceLocationListener;
 
   public DartVmServiceDebugProcess(@NotNull final ExecutionEnvironment executionEnvironment,
                                    @NotNull final XDebugSession session,
@@ -253,7 +253,7 @@ public class DartVmServiceDebugProcess extends XDebugProcess {
       final VmOpenSourceLocationListener vmOpenSourceLocationListener;
       try {
         vmService = VmService.connect(url);
-        vmOpenSourceLocationListener = VmOpenSourceLocationListener.connect(url);
+        vmOpenSourceLocationListener = VmOpenSourceLocationListener.connect(vmService);
       }
       catch (IOException | RuntimeException e) {
         onConnectFailed("Failed to connect to the VM observatory service at: " + url + "\n"
@@ -495,13 +495,12 @@ public class DartVmServiceDebugProcess extends XDebugProcess {
     getSession().stop();
   }
 
-  private void onConnectSucceeded(VmService vmService,
-                                  VmOpenSourceLocationListener vmOpenSourceLocationListener) {
+  private void onConnectSucceeded(VmService vmService, VmOpenSourceLocationListener sourceLocationListener) {
     final DartVmServiceListener vmServiceListener =
       new DartVmServiceListener(this, (DartVmServiceBreakpointHandler)myBreakpointHandlers[0]);
     final DartVmServiceBreakpointHandler breakpointHandler = (DartVmServiceBreakpointHandler)myBreakpointHandlers[0];
 
-    myVmOpenSourceLocationListener = vmOpenSourceLocationListener;
+    mySourceLocationListener = sourceLocationListener;
     myVmServiceWrapper = new VmServiceWrapper(this, vmService, vmServiceListener, myIsolatesInfo, breakpointHandler);
 
     final ScriptProvider provider =
@@ -513,9 +512,9 @@ public class DartVmServiceDebugProcess extends XDebugProcess {
     if (launchMode.supportsDebugConnection()) {
       myVmServiceWrapper.handleDebuggerConnected();
 
-      // TODO(jacobr): the following code is a workaround for issues
-      // auto-resuming isolates paused at their creation while running in
-      // debug mode.
+      // TODO(jacobr): the following code is a workaround for issues auto-resuming
+      // isolates paused at their creation while running in debug mode.
+      //
       // The ideal fix would by to fix VMServiceWrapper so that it checks
       // for already running isolates like we do here or to refactor where we
       // create our VmServiceWrapper so we can listen for isolate creation soon
@@ -556,8 +555,7 @@ public class DartVmServiceDebugProcess extends XDebugProcess {
     }
 
     vmService.addVmServiceListener(vmServiceListener);
-    myVmOpenSourceLocationListener.addListener(
-      this::onOpenSourceLocationRequest);
+    mySourceLocationListener.addListener(this::onOpenSourceLocationRequest);
 
     myVmConnected = true;
     getSession().rebuildViews();

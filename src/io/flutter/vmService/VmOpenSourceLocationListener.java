@@ -7,20 +7,19 @@ package io.flutter.vmService;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.util.EventDispatcher;
-import de.roderick.weberknecht.WebSocket;
-import de.roderick.weberknecht.WebSocketEventHandler;
-import de.roderick.weberknecht.WebSocketException;
-import de.roderick.weberknecht.WebSocketMessage;
 import io.flutter.FlutterUtils;
+import io.flutter.utils.VmServiceListenerAdapter;
 import org.apache.commons.lang.StringUtils;
+import org.dartlang.vm.service.VmService;
+import org.dartlang.vm.service.consumer.ServiceExtensionConsumer;
+import org.dartlang.vm.service.consumer.VersionConsumer;
+import org.dartlang.vm.service.element.Event;
+import org.dartlang.vm.service.element.RPCError;
+import org.dartlang.vm.service.element.Version;
 import org.jetbrains.annotations.NotNull;
 
-import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.EventListener;
 
 /**
@@ -28,11 +27,6 @@ import java.util.EventListener;
  */
 public class VmOpenSourceLocationListener {
   private static final Logger LOG = Logger.getInstance(VmOpenSourceLocationListener.class);
-
-  private interface MessageSender {
-    void sendMessage(JsonObject message);
-    void close();
-  }
 
   public interface Listener extends EventListener {
     void onRequest(@NotNull String isolateId, @NotNull String scriptId, int tokenPos);
@@ -43,95 +37,35 @@ public class VmOpenSourceLocationListener {
    *
    * @return an API object for interacting with the VM service (not {@code null}).
    */
-  public static VmOpenSourceLocationListener connect(@NotNull final String url) throws IOException {
-
-    // Validate URL
-    final URI uri;
-    try {
-      uri = new URI(url);
-    }
-    catch (URISyntaxException e) {
-      throw new IOException("Invalid URL: " + url, e);
-    }
-    final String wsScheme = uri.getScheme();
-    if (!"ws".equals(wsScheme) && !"wss".equals(wsScheme)) {
-      throw new IOException("Unsupported URL scheme: " + wsScheme);
-    }
-
-    // Create web socket and observatory
-    final WebSocket webSocket;
-    try {
-      webSocket = new WebSocket(uri);
-    }
-    catch (WebSocketException e) {
-      throw new IOException("Failed to create websocket: " + url, e);
-    }
-    final VmOpenSourceLocationListener listener = new VmOpenSourceLocationListener(new MessageSender() {
+  public static VmOpenSourceLocationListener connect(@NotNull VmService service) {
+    final VmOpenSourceLocationListener sourceLocationListener = new VmOpenSourceLocationListener(service);
+    service.getVersion(new VersionConsumer() {
       @Override
-      public void sendMessage(JsonObject message) {
-        try {
-          webSocket.send(message.toString());
-        }
-        catch (WebSocketException e) {
-          FlutterUtils.warn(LOG, e);
-        }
+      public void received(Version version) {
+        sourceLocationListener.registerExtensionProvider(version);
       }
 
       @Override
-      public void close() {
-        try {
-          webSocket.close();
-        }
-        catch (WebSocketException e) {
-          FlutterUtils.warn(LOG, e);
-        }
+      public void onError(RPCError error) {
+        FlutterUtils.warn(LOG, error.getMessage());
       }
     });
-
-    webSocket.setEventHandler(new WebSocketEventHandler() {
-      final JsonParser parser = new JsonParser();
-
-      @Override
-      public void onClose() {
-        // ignore
-      }
-
-      @Override
-      public void onMessage(WebSocketMessage message) {
-        listener.onMessage(parser.parse(message.getText()).getAsJsonObject());
-      }
-
-      @Override
-      public void onOpen() {
-        listener.onOpen();
-      }
-
-      @Override
-      public void onPing() {
-        // ignore
-      }
-
-      @Override
-      public void onPong() {
-        // ignore
-      }
-    });
-
-    // Establish WebSocket Connection
-    try {
-      webSocket.connect();
-    } catch (WebSocketException e) {
-      throw new IOException("Failed to connect: " + url, e);
-    }
-    return listener;
+    return sourceLocationListener;
   }
 
-  final MessageSender sender;
-  EventDispatcher<Listener> dispatcher = EventDispatcher.create(Listener.class);
+  private @NotNull final VmService service;
+  private final EventDispatcher<Listener> dispatcher = EventDispatcher.create(Listener.class);
 
+  private VmOpenSourceLocationListener(@NotNull VmService service) {
+    this.service = service;
 
-  private VmOpenSourceLocationListener(@NotNull final MessageSender sender) {
-    this.sender = sender;
+    service.addVmServiceListener(new VmServiceListenerAdapter() {
+      @Override
+      public void received(String streamId, Event event) {
+        // TODO:
+
+      }
+    });
   }
 
   public void addListener(@NotNull Listener listener) {
@@ -142,8 +76,30 @@ public class VmOpenSourceLocationListener {
     dispatcher.removeListener(listener);
   }
 
-  public void disconnect() {
-    sender.close();
+  private void registerExtensionProvider(Version version) {
+    // Register the openSourceLocation service.
+
+    final String registerName;
+    if (version.getMajor() <= 3 && version.getMinor() < 22) {
+      registerName = "_registerService";
+    }
+    else {
+      registerName = "registerService";
+    }
+
+    final JsonObject params = new JsonObject();
+    params.addProperty("service", "openSourceLocation");
+    params.addProperty("alias", "IntelliJ");
+    service.callServiceExtension(registerName, params, new ServiceExtensionConsumer() {
+      @Override
+      public void received(JsonObject result) {
+      }
+
+      @Override
+      public void onError(RPCError error) {
+        FlutterUtils.warn(LOG, error.getMessage());
+      }
+    });
   }
 
   private void onMessage(@NotNull final JsonObject message) {
@@ -184,8 +140,8 @@ public class VmOpenSourceLocationListener {
       tokenPos = params.get("tokenPos").getAsInt();
 
       dispatcher.getMulticaster().onRequest(isolateId, scriptId, tokenPos);
-
-    } catch (Exception e) {
+    }
+    catch (Exception e) {
       FlutterUtils.warn(LOG, e);
     }
 
@@ -198,16 +154,5 @@ public class VmOpenSourceLocationListener {
       response.add("result", result);
       sender.sendMessage(response);
     }
-  }
-
-  private void onOpen() {
-    final JsonObject message = new JsonObject();
-    message.addProperty("jsonrpc", "2.0");
-    message.addProperty("method", "_registerService");
-    final JsonObject params = new JsonObject();
-    params.addProperty("service", "openSourceLocation");
-    params.addProperty("alias", "IntelliJ");
-    message.add("params", params);
-    sender.sendMessage(message);
   }
 }

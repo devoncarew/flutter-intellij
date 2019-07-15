@@ -296,6 +296,10 @@ abstract class VmServiceBase implements VmServiceConst {
 
   public abstract void getObject(String isolateId, String objectId, GetObjectConsumer consumer);
 
+  public void callServiceExtension(String method, JsonObject params, ServiceExtensionConsumer consumer) {
+    request(method, params, consumer);
+  }
+
   /**
    * Invoke a specific service protocol extension method.
    * <p>
