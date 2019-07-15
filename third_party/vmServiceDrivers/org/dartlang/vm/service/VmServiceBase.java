@@ -73,10 +73,10 @@ abstract class VmServiceBase implements VmServiceConst {
     // Setup event handler for forwarding responses
     webSocket.setEventHandler(new WebSocketEventHandler() {
       @Override
-      public void onClose() {
-        Logging.getLogger().logInformation("VM connection closed: " + url);
+      public void onOpen() {
+        vmService.connectionOpened();
 
-        vmService.connectionClosed();
+        Logging.getLogger().logInformation("VM connection open: " + url);
       }
 
       @Override
@@ -90,18 +90,18 @@ abstract class VmServiceBase implements VmServiceConst {
       }
 
       @Override
-      public void onOpen() {
-        vmService.connectionOpened();
-
-        Logging.getLogger().logInformation("VM connection open: " + url);
-      }
-
-      @Override
       public void onPing() {
       }
 
       @Override
       public void onPong() {
+      }
+
+      @Override
+      public void onClose() {
+        Logging.getLogger().logInformation("VM connection closed: " + url);
+
+        vmService.connectionClosed();
       }
     });
 
@@ -167,7 +167,6 @@ abstract class VmServiceBase implements VmServiceConst {
    * Connect to the VM observatory service on the given local port.
    *
    * @return an API object for interacting with the VM service (not {@code null}).
-   *
    * @deprecated prefer the Url based constructor {@link VmServiceBase#connect}
    */
   @Deprecated
