@@ -7,6 +7,7 @@ package io.flutter.project;
 
 import com.intellij.openapi.project.ProjectManager;
 import com.intellij.openapi.roots.ModuleRootModificationUtil;
+import io.flutter.testing.FlutterModuleFixture;
 import io.flutter.testing.ProjectFixture;
 import io.flutter.testing.Testing;
 import org.junit.Rule;
@@ -18,17 +19,19 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 
 public class ProjectWatchTest {
+  @Rule
+  public ProjectFixture projectFixture = Testing.makeCodeInsightModule();
 
   @Rule
-  public final ProjectFixture fixture = Testing.makeEmptyModule();
+  public FlutterModuleFixture flutterFixture = new FlutterModuleFixture(projectFixture);
 
   @Test
   public void shouldSendEventWhenProjectCloses() throws Exception {
     Testing.runOnDispatchThread(() -> {
       final AtomicInteger callCount = new AtomicInteger();
-      final ProjectWatch listen = ProjectWatch.subscribe(fixture.getProject(), callCount::incrementAndGet);
+      final ProjectWatch listen = ProjectWatch.subscribe(projectFixture.getProject(), callCount::incrementAndGet);
 
-      ProjectManager.getInstance().closeProject(fixture.getProject());
+      ProjectManager.getInstance().closeProject(projectFixture.getProject());
       // The number of events fired is an implementation detail of the project manager. We just need at least one.
       assertNotEquals(0, callCount.get());
     });
@@ -38,11 +41,10 @@ public class ProjectWatchTest {
   public void shouldSendEventWhenModuleRootsChange() throws Exception {
     Testing.runOnDispatchThread(() -> {
       final AtomicInteger callCount = new AtomicInteger();
-      final ProjectWatch listen = ProjectWatch.subscribe(fixture.getProject(), callCount::incrementAndGet);
+      final ProjectWatch listen = ProjectWatch.subscribe(projectFixture.getProject(), callCount::incrementAndGet);
 
-      ModuleRootModificationUtil.addContentRoot(fixture.getModule(), "testDir");
+      ModuleRootModificationUtil.addContentRoot(projectFixture.getModule(), "testDir");
       assertEquals(1, callCount.get());
     });
   }
-
 }
