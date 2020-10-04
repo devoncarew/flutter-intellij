@@ -5,7 +5,10 @@
  */
 package io.flutter.analytics;
 
+import io.flutter.testing.ProjectFixture;
+import io.flutter.testing.Testing;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 
 import java.io.PrintWriter;
@@ -16,17 +19,21 @@ import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 
-public class AnalyticsTest {
-  private Analytics analytics;
+public class ProjectAnalyticsTest {
+  private ProjectAnalytics analytics;
+  private MockAnalyticsSettings settings;
   private MockAnalyticsTransport transport;
+
+  @Rule
+  public final ProjectFixture fixture = Testing.makeEmptyModule();
 
   @Before
   public void setUp() {
+    settings = new MockAnalyticsSettings(true);
     transport = new MockAnalyticsTransport();
 
-    analytics = new Analytics("123e4567-e89b-12d3-a456-426655440000", "1.0", "IntelliJ CE", "2016.3.2");
+    analytics = new ProjectAnalytics(fixture.getProject(), settings);
     analytics.setTransport(transport);
-    analytics.setCanSend(true);
   }
 
   @Test
@@ -60,17 +67,42 @@ public class AnalyticsTest {
 
   @Test
   public void testOptOutDoesntSend() {
-    analytics.setCanSend(false);
+    settings = new MockAnalyticsSettings(false);
+    transport = new MockAnalyticsTransport();
+
+    analytics = new ProjectAnalytics(fixture.getProject(), settings);
+    analytics.setTransport(transport);
+
     analytics.sendScreenView("testAnalyticsPage");
     assertEquals(0, transport.sentValues.size());
   }
 
-  private static class MockAnalyticsTransport implements Analytics.Transport {
+  private static class MockAnalyticsTransport implements ProjectAnalytics.Transport {
     final public List<Map<String, String>> sentValues = new ArrayList<>();
 
     @Override
     public void send(String url, Map<String, String> values) {
       sentValues.add(values);
     }
+  }
+}
+
+class MockAnalyticsSettings extends AnalyticsSettings {
+  private final boolean canSend;
+
+  MockAnalyticsSettings(boolean canSend) {
+    this.canSend = canSend;
+  }
+
+  public boolean getCanReportAnalytics() {
+    return canSend;
+  }
+
+  public void setCanReportAnalytics(boolean reportAnalytics) {
+    // ignore
+  }
+
+  public static void setAnalyticsDisclosureShown(boolean value) {
+    // ignore
   }
 }

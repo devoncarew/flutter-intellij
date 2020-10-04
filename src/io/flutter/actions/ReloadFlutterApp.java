@@ -42,12 +42,12 @@ public class ReloadFlutterApp extends FlutterAppAction {
     final boolean shouldRestart = (e.getModifiers() & InputEvent.SHIFT_MASK) != 0 && !"GoToAction".equals(e.getPlace());
 
     if (shouldRestart) {
-      FlutterInitializer.sendAnalyticsAction(RestartFlutterApp.class.getSimpleName());
+      FlutterInitializer.sendAnalyticsAction(project, RestartFlutterApp.class.getSimpleName());
       FlutterReloadManager.getInstance(project).saveAllAndRestart(getApp(), FlutterConstants.RELOAD_REASON_MANUAL);
     }
     else {
       // Else perform a hot reload.
-      FlutterInitializer.sendAnalyticsAction(this);
+      FlutterInitializer.sendAnalyticsAction(project, this);
       FlutterReloadManager.getInstance(project).saveAllAndReload(getApp(), FlutterConstants.RELOAD_REASON_MANUAL);
     }
   }

@@ -181,7 +181,7 @@ public class FlutterErrorReportSubmitter extends ErrorReportSubmitter {
     }
 
     for (IdeaLoggingEvent event : events) {
-      FlutterInitializer.getAnalytics().sendException(event.getThrowableText(), false);
+      FlutterInitializer.getAnalytics(project).sendException(event.getThrowableText(), false);
     }
 
     final String text = builder.toString().trim() + "\n";

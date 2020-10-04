@@ -30,8 +30,9 @@ import com.intellij.ui.components.labels.LinkLabel;
 import com.intellij.util.PlatformIcons;
 import io.flutter.FlutterBundle;
 import io.flutter.FlutterConstants;
-import io.flutter.FlutterInitializer;
 import io.flutter.FlutterUtils;
+import io.flutter.analytics.ProjectAnalytics;
+import io.flutter.analytics.AnalyticsSettings;
 import io.flutter.bazel.Workspace;
 import io.flutter.bazel.WorkspaceCache;
 import io.flutter.settings.FlutterSettings;
@@ -172,7 +173,7 @@ public class FlutterSettingsConfigurable implements SearchableConfigurable {
       return true;
     }
 
-    if (FlutterInitializer.getCanReportAnalytics() != myReportUsageInformationCheckBox.isSelected()) {
+    if (AnalyticsSettings.getInstance().getHasNotOptedOut() != myReportUsageInformationCheckBox.isSelected()) {
       return true;
     }
 
@@ -247,7 +248,8 @@ public class FlutterSettingsConfigurable implements SearchableConfigurable {
       }
     }
 
-    FlutterInitializer.setCanReportAnalytics(myReportUsageInformationCheckBox.isSelected());
+    AnalyticsSettings.getInstance().setCanReportAnalytics(myReportUsageInformationCheckBox.isSelected());
+    ProjectAnalytics.getInstance(myProject).updateProjectListeners();
 
     final FlutterSettings settings = FlutterSettings.getInstance();
     settings.setReloadOnSave(myHotReloadOnSaveCheckBox.isSelected());
@@ -285,7 +287,7 @@ public class FlutterSettingsConfigurable implements SearchableConfigurable {
 
     onVersionChanged();
 
-    myReportUsageInformationCheckBox.setSelected(FlutterInitializer.getCanReportAnalytics());
+    myReportUsageInformationCheckBox.setSelected(AnalyticsSettings.getInstance().getHasNotOptedOut());
 
     final FlutterSettings settings = FlutterSettings.getInstance();
     myHotReloadOnSaveCheckBox.setSelected(settings.isReloadOnSave());

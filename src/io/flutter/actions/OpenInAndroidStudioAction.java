@@ -45,7 +45,8 @@ public class OpenInAndroidStudioAction extends AnAction {
     if (FlutterUtils.isAndroidStudio()) {
       try {
         //noinspection unchecked
-        final Class<OpenInAndroidStudioAction> opener = (Class<OpenInAndroidStudioAction>)Class.forName("io.flutter.actions.OpenAndroidModule");
+        final Class<OpenInAndroidStudioAction> opener =
+          (Class<OpenInAndroidStudioAction>)Class.forName("io.flutter.actions.OpenAndroidModule");
         opener.newInstance().actionPerformed(event);
         return;
       }
@@ -213,9 +214,9 @@ public class OpenInAndroidStudioAction extends AnAction {
 
     final FlutterSdk flutterSdk = FlutterSdk.getFlutterSdk(project);
     if (flutterSdk != null) {
-      String androidSdkLocation = flutterSdk.queryFlutterConfig("android-studio-dir", true);
+      String androidSdkLocation = flutterSdk.queryFlutterConfig(project, "android-studio-dir", true);
       if (androidSdkLocation != null && !new File(androidSdkLocation).exists()) {
-        androidSdkLocation = flutterSdk.queryFlutterConfig("android-studio-dir", false);
+        androidSdkLocation = flutterSdk.queryFlutterConfig(project, "android-studio-dir", false);
       }
       if (androidSdkLocation != null) {
         if (androidSdkLocation.contains("/Android Studio 2")) {

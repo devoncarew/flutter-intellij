@@ -5,8 +5,18 @@
  */
 package io.flutter.analytics;
 
+import com.google.common.annotations.VisibleForTesting;
+import com.intellij.ide.plugins.IdeaPluginDescriptor;
+import com.intellij.ide.plugins.PluginManagerCore;
+import com.intellij.ide.util.PropertiesComponent;
+import com.intellij.openapi.application.ApplicationInfo;
+import com.intellij.openapi.components.ServiceManager;
+import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.SystemInfo;
 import com.intellij.util.concurrency.QueueProcessor;
+import com.intellij.util.messages.MessageBusConnection;
+import io.flutter.FlutterUtils;
+import io.flutter.bazel.WorkspaceCache;
 import io.flutter.sdk.FlutterSdk;
 import io.flutter.sdk.FlutterSdkVersion;
 import org.jetbrains.annotations.NotNull;
@@ -22,21 +32,29 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Lightweight Google Analytics integration.
  */
-public class Analytics {
+public class ProjectAnalytics {
   public static final String GROUP_DISPLAY_ID = "Flutter Usage Statistics";
 
   private static final String analyticsUrl = "https://www.google-analytics.com/collect";
   private static final String applicationName = "Flutter IntelliJ Plugin";
   private static final String trackingId = "UA-67589403-7";
 
+  private static final String analyticsClientIdKey = "io.flutter.analytics.clientId";
+
   private static final int maxExceptionLength = 512;
 
   @NotNull
+  private final Project project;
+  private final AnalyticsSettings settings;
+
+  @NotNull
   private final String clientId;
+
   @NotNull
   private final String pluginVersion;
   @NotNull
@@ -46,13 +64,60 @@ public class Analytics {
 
   private Transport transport = new HttpTransport();
   private final ThrottlingBucket bucket = new ThrottlingBucket(20);
-  private boolean myCanSend = false;
 
-  public Analytics(@NotNull String clientId, @NotNull String pluginVersion, @NotNull String platformName, @NotNull String platformVersion) {
-    this.clientId = clientId;
-    this.pluginVersion = pluginVersion;
-    this.platformName = platformName;
-    this.platformVersion = platformVersion;
+  private MessageBusConnection messageBusConnection;
+
+  @NotNull
+  public static ProjectAnalytics getInstance(@NotNull final Project project) {
+    return ServiceManager.getService(project, ProjectAnalytics.class);
+  }
+
+  /**
+   * todo:
+   */
+  private static String getCreateClientId() {
+    final PropertiesComponent properties = PropertiesComponent.getInstance();
+
+    String clientId = properties.getValue(analyticsClientIdKey);
+    if (clientId == null) {
+      clientId = UUID.randomUUID().toString();
+      properties.setValue(analyticsClientIdKey, clientId);
+    }
+
+    return clientId;
+  }
+
+  private ProjectAnalytics(@NotNull final Project project) {
+    this(project, AnalyticsSettings.getInstance());
+  }
+
+  @VisibleForTesting
+  public ProjectAnalytics(@NotNull final Project project, AnalyticsSettings settings) {
+    this.project = project;
+    this.settings = settings;
+
+    this.clientId = getCreateClientId();
+
+    final IdeaPluginDescriptor descriptor = PluginManagerCore.getPlugin(FlutterUtils.getPluginId());
+    assert descriptor != null;
+    final ApplicationInfo info = ApplicationInfo.getInstance();
+
+    this.pluginVersion = descriptor.getVersion();
+    this.platformName = info.getVersionName();
+    this.platformVersion = info.getFullVersion();
+  }
+
+  /**
+   * todo:
+   */
+  public void updateProjectListeners() {
+    if (canSend() && messageBusConnection == null) {
+      messageBusConnection = ToolWindowTracker.track(project, this);
+    }
+    else if (!canSend() && messageBusConnection != null) {
+      messageBusConnection.disconnect();
+      messageBusConnection = null;
+    }
   }
 
   @NotNull
@@ -60,12 +125,8 @@ public class Analytics {
     return clientId;
   }
 
-  public boolean canSend() {
-    return myCanSend;
-  }
-
-  public void setCanSend(boolean value) {
-    this.myCanSend = value;
+  private boolean canSend() {
+    return settings.getCanReportAnalytics();
   }
 
   /**
@@ -148,6 +209,11 @@ public class Analytics {
       if (flutterVersion.getVersionText() != null) {
         args.put("cd2", flutterVersion.getVersionText());
       }
+    }
+
+    // Record whether this client uses bazel.
+    if (WorkspaceCache.getInstance(project).isBazel()) {
+      args.put("cd3", "bazel");
     }
 
     args.put("tid", trackingId);

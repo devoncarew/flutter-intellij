@@ -30,8 +30,8 @@ import java.util.concurrent.atomic.AtomicReference;
 public class WorkspaceCache {
   @NotNull private final Project project;
   @Nullable private Workspace cache;
-  private boolean disconnected = false;
 
+  private boolean disconnected = false;
   private boolean refreshScheduled = false;
 
   private final Set<Runnable> subscribers = new LinkedHashSet<>();
@@ -131,6 +131,7 @@ public class WorkspaceCache {
   private void refresh() {
     final Workspace workspace = Workspace.loadUncached(project);
     if (workspace == cache && !disconnected) return;
+
     if (cache != null && workspace == null) {
       disconnected = true;
       return;
@@ -141,13 +142,15 @@ public class WorkspaceCache {
 
     // If the current workspace is a bazel workspace, update the Dart plugin
     // registry key to indicate that there are dart projects without pubspec
-    // registry keys. TODO(jacobr): it would be nice if the Dart plugin was
-    // instead smarter about handling Bazel projects.
+    // registry keys.
+    //
+    // TODO(jacobr): it would be nice if the Dart plugin was instead smarter about handling Bazel projects.
     if (cache != null) {
       if (!Registry.is(dartProjectsWithoutPubspecRegistryKey, false)) {
         Registry.get(dartProjectsWithoutPubspecRegistryKey).setValue(true);
       }
     }
+
     notifyListeners();
   }
 

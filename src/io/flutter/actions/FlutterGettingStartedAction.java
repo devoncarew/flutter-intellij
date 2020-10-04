@@ -15,7 +15,7 @@ import org.jetbrains.annotations.NotNull;
 public class FlutterGettingStartedAction extends DumbAwareAction {
   @Override
   public void actionPerformed(@NotNull final AnActionEvent e) {
-    FlutterInitializer.sendAnalyticsAction(this);
+    FlutterInitializer.sendAnalyticsAction(e.getProject(), this);
     BrowserLauncher.getInstance().browse(FlutterConstants.URL_GETTING_STARTED_IDE, null);
   }
 }

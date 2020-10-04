@@ -10,31 +10,39 @@ import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.openapi.wm.ToolWindowManager;
 import com.intellij.openapi.wm.ex.ToolWindowManagerEx;
 import com.intellij.openapi.wm.ex.ToolWindowManagerListener;
+import com.intellij.util.messages.MessageBusConnection;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * This class interfaces with the IntelliJ tool window manager and reports tool window
- * usage to analytics.
+ * This class interfaces with the IntelliJ tool window manager and reports tool window usage to analytics.
  */
-public class ToolWindowTracker implements ToolWindowManagerListener {
+class ToolWindowTracker implements ToolWindowManagerListener {
 
-  public static void track(@NotNull Project project, @NotNull Analytics analytics) {
-    new ToolWindowTracker(project, analytics);
+  public static MessageBusConnection track(@NotNull Project project, @NotNull ProjectAnalytics analytics) {
+    return new ToolWindowTracker(project, analytics).connect();
   }
 
-  private final Analytics myAnalytics;
+  private final Project myProject;
+  private final ProjectAnalytics myAnalytics;
   private final ToolWindowManagerEx myToolWindowManager;
 
   private String currentWindowId;
 
-  private ToolWindowTracker(@NotNull Project project, @NotNull Analytics analytics) {
+  private ToolWindowTracker(@NotNull Project project, @NotNull ProjectAnalytics analytics) {
+    myProject = project;
     myAnalytics = analytics;
 
     myToolWindowManager = ToolWindowManagerEx.getInstanceEx(project);
+  }
 
-    project.getMessageBus().connect().subscribe(ToolWindowManagerListener.TOPIC, this);
+  MessageBusConnection connect() {
+    final MessageBusConnection connection = myProject.getMessageBus().connect();
+
+    connection.subscribe(ToolWindowManagerListener.TOPIC, this);
 
     update();
+
+    return connection;
   }
 
   @Override

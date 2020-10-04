@@ -147,7 +147,7 @@ public class FlutterWidgetPerfManager implements Disposable, FlutterApp.FlutterA
     }
     // Send analytics.
     if (trackRebuildWidgets) {
-      FlutterInitializer.getAnalytics().sendEvent("intellij", "TrackWidgetRebuilds");
+      FlutterInitializer.getAnalytics(project).sendEvent("intellij", "TrackWidgetRebuilds");
     }
   }
 
@@ -166,7 +166,7 @@ public class FlutterWidgetPerfManager implements Disposable, FlutterApp.FlutterA
     }
     // Send analytics.
     if (trackRepaintWidgets) {
-      FlutterInitializer.getAnalytics().sendEvent("intellij", "TrackRepaintWidgets");
+      FlutterInitializer.getAnalytics(project).sendEvent("intellij", "TrackRepaintWidgets");
     }
   }
 

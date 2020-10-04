@@ -52,7 +52,7 @@ public class AttachDebuggerAction extends FlutterSdkAction {
   @Override
   public void startCommand(@NotNull Project project, @NotNull FlutterSdk sdk, @Nullable PubRoot root, @NotNull DataContext context) {
     // NOTE: When making changes here, consider making similar changes to RunFlutterAction.
-    FlutterInitializer.sendAnalyticsAction(this);
+    FlutterInitializer.sendAnalyticsAction(project, this);
 
     RunConfiguration configuration = findRunConfig(project);
     if (configuration == null) {

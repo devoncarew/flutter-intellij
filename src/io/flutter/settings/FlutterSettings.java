@@ -13,7 +13,7 @@ import com.intellij.openapi.util.registry.Registry;
 import com.intellij.util.EventDispatcher;
 import com.jetbrains.lang.dart.analyzer.DartClosingLabelManager;
 import io.flutter.FlutterUtils;
-import io.flutter.analytics.Analytics;
+import io.flutter.analytics.ProjectAnalytics;
 
 import java.util.EventListener;
 
@@ -55,7 +55,7 @@ public class FlutterSettings {
   public FlutterSettings() {
   }
 
-  public void sendSettingsToAnalytics(Analytics analytics) {
+  public void sendSettingsToAnalytics(ProjectAnalytics analytics) {
     final PropertiesComponent properties = getPropertiesComponent();
 
     // Send data on the number of experimental features enabled by users.

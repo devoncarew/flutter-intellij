@@ -38,7 +38,7 @@ public class OpenFlutterViewAction extends DumbAwareAction {
       return;
     }
 
-    FlutterInitializer.sendAnalyticsAction(this);
+    FlutterInitializer.sendAnalyticsAction(project, this);
 
     final ToolWindow toolWindow = ToolWindowManager.getInstance(project).getToolWindow(FlutterView.TOOL_WINDOW_ID);
     if (toolWindow == null) {

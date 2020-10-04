@@ -35,7 +35,7 @@ public class RestartFlutterApp extends FlutterAppAction {
       return;
     }
 
-    FlutterInitializer.sendAnalyticsAction(this);
+    FlutterInitializer.sendAnalyticsAction(project, this);
 
     FlutterReloadManager.getInstance(project).saveAllAndRestart(getApp(), FlutterConstants.RELOAD_REASON_MANUAL);
   }

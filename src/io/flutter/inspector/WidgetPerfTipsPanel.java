@@ -59,8 +59,9 @@ public class WidgetPerfTipsPanel extends JPanel {
     perfTips = new JPanel();
     perfTips.setLayout(new VerticalLayout(0));
 
-    linkListener = (source, tip) -> handleTipSelection(tip);
     final Project project = app.getProject();
+    linkListener = (source, tip) -> handleTipSelection(project, tip);
+
     final MessageBusConnection bus = project.getMessageBus().connect(project);
     final FileEditorManagerListener listener = new FileEditorManagerListener() {
       @Override
@@ -80,9 +81,9 @@ public class WidgetPerfTipsPanel extends JPanel {
     Disposer.register(parentDisposable, perfTipComputeDelayTimer::stop);
   }
 
-  private static void handleTipSelection(@NotNull PerfTip tip) {
+  private static void handleTipSelection(@NotNull Project project, @NotNull PerfTip tip) {
     // Send analytics.
-    FlutterInitializer.getAnalytics().sendEvent("perf", "perfTipSelected." + tip.getRule().getId());
+    FlutterInitializer.getAnalytics(project).sendEvent("perf", "perfTipSelected." + tip.getRule().getId());
     BrowserLauncher.getInstance().browse(tip.getUrl(), null);
   }
 

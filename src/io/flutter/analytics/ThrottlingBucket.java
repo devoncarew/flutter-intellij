@@ -5,6 +5,8 @@
  */
 package io.flutter.analytics;
 
+import com.google.common.annotations.VisibleForTesting;
+
 /**
  * A throttling algorithm.
  * <p/>
@@ -14,6 +16,7 @@ package io.flutter.analytics;
  * be performed in bursts without throttling, but holds the overall average rate of operations to 1
  * per second.
  */
+@VisibleForTesting
 public class ThrottlingBucket {
   private final int startingCount;
   private int drops;

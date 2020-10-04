@@ -247,7 +247,7 @@ public class FlutterApp implements Disposable {
 
     // Send analytics for the start and stop events.
     if (analyticsStart != null) {
-      FlutterInitializer.sendAnalyticsAction(analyticsStart);
+      FlutterInitializer.sendAnalyticsAction(project, analyticsStart);
     }
 
     final DaemonApi api = new DaemonApi(process);
@@ -258,12 +258,12 @@ public class FlutterApp implements Disposable {
       public void processTerminated(@NotNull ProcessEvent event) {
         LOG.info(analyticsStop + " " + project.getName() + " (" + mode.mode() + ")");
         if (analyticsStop != null) {
-          FlutterInitializer.sendAnalyticsAction(analyticsStop);
+          FlutterInitializer.sendAnalyticsAction(project, analyticsStop);
         }
 
         // Send analytics about whether this session used the reload workflow, the restart workflow, or neither.
         final String workflowType = app.reloadCount > 0 ? "reload" : (app.restartCount > 0 ? "restart" : "none");
-        FlutterInitializer.getAnalytics().sendEvent("workflow", workflowType);
+        FlutterInitializer.getAnalytics(project).sendEvent("workflow", workflowType);
 
         // Send the ratio of reloads to restarts.
         int reloadfraction = 0;
@@ -271,7 +271,7 @@ public class FlutterApp implements Disposable {
           final double fraction = (app.reloadCount * 100.0) / (app.reloadCount + app.restartCount);
           reloadfraction = (int)Math.round(fraction);
         }
-        FlutterInitializer.getAnalytics().sendEventMetric("workflow", "reloadFraction", reloadfraction);
+        FlutterInitializer.getAnalytics(project).sendEventMetric("workflow", "reloadFraction", reloadfraction);
 
         Disposer.dispose(app);
       }
@@ -912,7 +912,7 @@ class FlutterAppDaemonEventListener implements DaemonEvent.Listener {
 
   private void reportElapsed(@NotNull Stopwatch watch, String verb, String analyticsName) {
     final long elapsedMs = watch.elapsed(TimeUnit.MILLISECONDS);
-    FlutterInitializer.getAnalytics().sendTiming("run", analyticsName, elapsedMs);
+    FlutterInitializer.getAnalytics(app.getProject()).sendTiming("run", analyticsName, elapsedMs);
   }
 
   @Override

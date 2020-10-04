@@ -19,8 +19,9 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.jetbrains.lang.dart.DartFileType;
 import icons.FlutterIcons;
-import io.flutter.FlutterInitializer;
 import io.flutter.FlutterMessages;
+import io.flutter.analytics.ProjectAnalytics;
+import io.flutter.analytics.AnalyticsSettings;
 import io.flutter.pub.PubRoot;
 import org.jetbrains.annotations.NotNull;
 
@@ -91,9 +92,8 @@ public class FlutterSurveyNotifications {
     // Or, if the survey has already been taken.
     if (properties.getBoolean(survey.uniqueId)) return;
 
-    final boolean reportAnalytics = FlutterInitializer.getCanReportAnalytics();
-    final String notificationContents = reportAnalytics ?
-                                        ANALYTICS_OPT_IN_DETAILS : null;
+    final boolean reportAnalytics = AnalyticsSettings.getInstance().getCanReportAnalytics();
+    final String notificationContents = reportAnalytics ? ANALYTICS_OPT_IN_DETAILS : null;
 
     final Notification notification = new Notification(
       FlutterMessages.FLUTTER_NOTIFICATION_GROUP_ID,
@@ -115,7 +115,7 @@ public class FlutterSurveyNotifications {
         String url = survey.urlPrefix + "?Source=IntelliJ";
         // Add a client ID if analytics have been opted into.
         if (reportAnalytics) {
-          final String clientId = FlutterInitializer.getAnalytics().getClientId();
+          final String clientId = ProjectAnalytics.getInstance(myProject).getClientId();
           url += ("&ClientID=" + clientId);
         }
 

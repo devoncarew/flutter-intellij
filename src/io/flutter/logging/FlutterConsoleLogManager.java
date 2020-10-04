@@ -21,7 +21,7 @@ import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.ui.SimpleTextAttributes;
 import com.intellij.util.concurrency.QueueProcessor;
-import io.flutter.FlutterInitializer;
+import io.flutter.analytics.ProjectAnalytics;
 import io.flutter.inspector.DiagnosticLevel;
 import io.flutter.inspector.DiagnosticsNode;
 import io.flutter.inspector.DiagnosticsTreeStyle;
@@ -134,7 +134,7 @@ public class FlutterConsoleLogManager {
       if (isFirstErrorForFrame()) {
         final String errorId = FlutterErrorHelper.getAnalyticsId(diagnosticsNode);
         if (errorId != null) {
-          FlutterInitializer.getAnalytics().sendEvent(
+          ProjectAnalytics.getInstance(app.getProject()).sendEvent(
             "flutter-error", errorId, FlutterSdk.getFlutterSdk(app.getProject()));
         }
       }

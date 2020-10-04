@@ -299,7 +299,7 @@ public class WidgetEditToolbar {
   }
 
   private void sendAnalyticEvent(@NotNull String name) {
-    FlutterInitializer.getAnalytics().sendEvent("preview", name);
+    FlutterInitializer.getAnalytics(project).sendEvent("preview", name);
   }
 
   private void applyChangeAndShowException(SourceChange change) {

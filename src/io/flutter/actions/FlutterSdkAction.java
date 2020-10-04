@@ -37,7 +37,7 @@ public abstract class FlutterSdkAction extends DumbAwareAction {
       // See if the Bazel workspace exists for this project.
       final Workspace workspace = FlutterModuleUtils.getFlutterBazelWorkspace(project);
       if (workspace != null) {
-        FlutterInitializer.sendAnalyticsAction(this);
+        FlutterInitializer.sendAnalyticsAction(event.getProject(), this);
         FileDocumentManager.getInstance().saveAllDocuments();
         startCommandInBazelContext(project, workspace);
         return;
@@ -50,7 +50,7 @@ public abstract class FlutterSdkAction extends DumbAwareAction {
       return;
     }
 
-    FlutterInitializer.sendAnalyticsAction(this);
+    FlutterInitializer.sendAnalyticsAction(project, this);
     FileDocumentManager.getInstance().saveAllDocuments();
     startCommand(project, sdk, PubRoot.forEventWithRefresh(event), event.getDataContext());
   }

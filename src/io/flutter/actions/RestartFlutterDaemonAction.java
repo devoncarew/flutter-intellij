@@ -14,7 +14,7 @@ import io.flutter.run.daemon.DeviceService;
 public class RestartFlutterDaemonAction extends AnAction {
   @Override
   public void actionPerformed(AnActionEvent event) {
-    FlutterInitializer.sendAnalyticsAction(this);
+    FlutterInitializer.sendAnalyticsAction(event.getProject(), this);
 
     final Project project = event.getProject();
     if (project == null) {

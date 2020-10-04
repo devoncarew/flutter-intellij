@@ -45,11 +45,11 @@ public class OpenDevToolsAction extends DumbAwareAction {
 
   @Override
   public void actionPerformed(@NotNull final AnActionEvent event) {
-    FlutterInitializer.sendAnalyticsAction(this);
-
     if (event.getProject() == null) {
       return;
     }
+
+    FlutterInitializer.sendAnalyticsAction(event.getProject(), this);
 
     final DevToolsManager devToolsManager = DevToolsManager.getInstance(event.getProject());
 

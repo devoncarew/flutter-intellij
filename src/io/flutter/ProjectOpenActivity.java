@@ -64,7 +64,7 @@ public class ProjectOpenActivity implements StartupActivity, DumbAware {
     }
 
     ApplicationManager.getApplication().executeOnPooledThread(() -> {
-      sdk.queryFlutterConfig("android-studio-dir", false);
+      sdk.queryFlutterConfig(project, "android-studio-dir", false);
     });
     if (FlutterUtils.isAndroidStudio() && !FLUTTER_PROJECT_TYPE.equals(ProjectTypeService.getProjectType(project))) {
       if (!AndroidUtils.isAndroidProject(project)) {
@@ -97,6 +97,7 @@ public class ProjectOpenActivity implements StartupActivity, DumbAware {
       myProject = project;
       myRoot = root;
 
+      //noinspection DialogTitleCapitalization
       addAction(new AnAction("Run 'flutter pub get'") {
         @Override
         public void actionPerformed(@NotNull AnActionEvent event) {

@@ -19,6 +19,7 @@ import com.intellij.openapi.fileChooser.FileChooser;
 import com.intellij.openapi.fileChooser.FileChooserDescriptor;
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory;
 import com.intellij.openapi.project.DumbAwareAction;
+import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Key;
 import com.intellij.openapi.util.io.FileUtil;
 import com.intellij.openapi.vfs.LocalFileSystem;
@@ -62,8 +63,8 @@ public class InstallSdkAction extends DumbAwareAction {
   }
 
   @Override
-  public void actionPerformed(@Nullable /* null when called from AS */ AnActionEvent e) {
-    myInstallAction.perform();
+  public void actionPerformed(@Nullable /* null when called from AS */ AnActionEvent event) {
+    myInstallAction.perform(event == null ? null : event.getProject());
   }
 
   public Icon getLinkIcon() {
@@ -115,7 +116,7 @@ public class InstallSdkAction extends DumbAwareAction {
     public void actionCanceled() {
     }
 
-    abstract void perform();
+    abstract void perform(@Nullable Project project);
 
     abstract Icon getLinkIcon();
 
@@ -170,8 +171,10 @@ public class InstallSdkAction extends DumbAwareAction {
     }
 
     @Override
-    void perform() {
-      FlutterInitializer.sendAnalyticsAction(ANALYTICS_KEY);
+    void perform(@Nullable Project project) {
+      if (project != null) {
+        FlutterInitializer.sendAnalyticsAction(project, ANALYTICS_KEY);
+      }
       BrowserUtil.browse(FlutterConstants.URL_GETTING_STARTED);
     }
 
@@ -195,7 +198,7 @@ public class InstallSdkAction extends DumbAwareAction {
     }
 
     @Override
-    void perform() {
+    void perform(@Nullable Project project) {
       // Defaults to ~/flutter
       final FileChooserDescriptor descriptor =
         new FileChooserDescriptor(FileChooserDescriptorFactory.createSingleFolderDescriptor()) {
@@ -213,7 +216,9 @@ public class InstallSdkAction extends DumbAwareAction {
 
       final VirtualFile installTarget = FileChooser.chooseFile(descriptor, null, null);
       if (installTarget != null) {
-        FlutterInitializer.sendAnalyticsAction(ANALYTICS_KEY);
+        if (project != null) {
+          FlutterInitializer.sendAnalyticsAction(project, ANALYTICS_KEY);
+        }
         installTo(installTarget);
       }
       else {

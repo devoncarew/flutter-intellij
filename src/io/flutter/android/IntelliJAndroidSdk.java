@@ -115,7 +115,7 @@ public class IntelliJAndroidSdk {
     if (askFlutterTools) {
       final FlutterSdk flutterSdk = FlutterSdk.getFlutterSdk(project);
       if (flutterSdk != null) {
-        final String androidSdkLocation = flutterSdk.queryFlutterConfig("android-sdk", true);
+        final String androidSdkLocation = flutterSdk.queryFlutterConfig(project, "android-sdk", true);
         if (androidSdkLocation != null) {
           return androidSdkLocation;
         }

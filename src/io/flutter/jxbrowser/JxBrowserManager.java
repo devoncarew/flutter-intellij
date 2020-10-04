@@ -20,6 +20,7 @@ import com.intellij.util.download.DownloadableFileDescription;
 import com.intellij.util.download.DownloadableFileService;
 import com.intellij.util.download.FileDownloader;
 import io.flutter.FlutterInitializer;
+import io.flutter.analytics.ProjectAnalytics;
 import io.flutter.settings.FlutterSettings;
 import io.flutter.utils.FileUtils;
 import io.flutter.utils.JxBrowserUtils;
@@ -38,8 +39,10 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
-// JxBrowser provides Chromium to display web pages within IntelliJ. This class manages downloading the required files and adding them to
-// the class path.
+/**
+ * JxBrowser provides Chromium to display web pages within IntelliJ. This class manages downloading the required files and adding them to
+ * the class path.
+ */
 public class JxBrowserManager {
   private static JxBrowserManager manager;
 
@@ -56,8 +59,9 @@ public class JxBrowserManager {
 
   public static JxBrowserManager getInstance() {
     if (manager == null) {
-      return new JxBrowserManager();
+      manager = new JxBrowserManager();
     }
+
     return manager;
   }
 
@@ -109,8 +113,8 @@ public class JxBrowserManager {
     }
   }
 
-  private void setStatusFailed(String failureReason) {
-    FlutterInitializer.getAnalytics().sendEvent("jxbrowser", "installationFailed-" + failureReason);
+  private void setStatusFailed(@NotNull Project project, String failureReason) {
+    FlutterInitializer.getAnalytics(project).sendEvent("jxbrowser", "installationFailed-" + failureReason);
     status.set(JxBrowserStatus.INSTALLATION_FAILED);
     installation.complete(JxBrowserStatus.INSTALLATION_FAILED);
   }
@@ -124,7 +128,7 @@ public class JxBrowserManager {
     FlutterSettings.getInstance().addListener(new SettingsListener(project));
   }
 
-  public void setUp(Project project) {
+  public void setUp(@NotNull Project project) {
     if (!status.compareAndSet(JxBrowserStatus.NOT_INSTALLED, JxBrowserStatus.INSTALLATION_IN_PROGRESS)) {
       // This check ensures that an IDE only downloads and installs JxBrowser once, even if multiple projects are open.
       // If already in progress, let calling point wait until success or failure (it may make sense to call setUp but proceed).
@@ -139,7 +143,7 @@ public class JxBrowserManager {
     }
     catch (FileNotFoundException e) {
       LOG.info(project.getName() + ": Unable to find JxBrowser license key file", e);
-      setStatusFailed("missingKey");
+      setStatusFailed(project, "missingKey");
       return;
     }
 
@@ -155,7 +159,7 @@ public class JxBrowserManager {
     final boolean directoryExists = FileUtils.getInstance().makeDirectory(DOWNLOAD_PATH);
     if (!directoryExists) {
       LOG.info(project.getName() + ": Unable to create directory for JxBrowser files");
-      setStatusFailed("directoryCreationFailed");
+      setStatusFailed(project, "directoryCreationFailed");
       return;
     }
 
@@ -165,7 +169,7 @@ public class JxBrowserManager {
     }
     catch (FileNotFoundException e) {
       LOG.info(project.getName() + ": Unable to find JxBrowser platform file for " + SystemInfo.getOsNameAndVersion());
-      setStatusFailed("missingPlatformFiles-" + SystemInfo.getOsNameAndVersion());
+      setStatusFailed(project, "missingPlatformFiles-" + SystemInfo.getOsNameAndVersion());
       return;
     }
 
@@ -181,7 +185,7 @@ public class JxBrowserManager {
 
     if (allDownloaded) {
       LOG.info(project.getName() + ": JxBrowser platform files already exist, skipping download");
-      loadClasses(fileNames);
+      loadClasses(project, fileNames);
       return;
     }
 
@@ -224,11 +228,11 @@ public class JxBrowserManager {
             }
           }
 
-          loadClasses(fileNames);
+          loadClasses(project, fileNames);
         }
         catch (IOException e) {
           LOG.info(project.getName() + ": JxBrowser file downloaded failed: " + currentFileName);
-          setStatusFailed("fileDownloadFailed-" + currentFileName);
+          setStatusFailed(project, "fileDownloadFailed-" + currentFileName);
         }
       }
     };
@@ -237,7 +241,7 @@ public class JxBrowserManager {
     ProgressManager.getInstance().runProcessWithProgressAsynchronously(task, processIndicator);
   }
 
-  private void loadClasses(String[] fileNames) {
+  private void loadClasses(@NotNull Project project, String[] fileNames) {
     for (String fileName : fileNames) {
       final boolean success = FileUtils.getInstance().loadClass(this.getClass().getClassLoader(), getFilePath(fileName));
       if (success) {
@@ -245,11 +249,11 @@ public class JxBrowserManager {
       }
       else {
         LOG.info("Failed to load JxBrowser file: " + fileName);
-        setStatusFailed("classLoadFailed");
+        setStatusFailed(project, "classLoadFailed");
         return;
       }
     }
-    FlutterInitializer.getAnalytics().sendEvent("jxbrowser", "installed");
+    ProjectAnalytics.getInstance(project).sendEvent("jxbrowser", "installed");
     status.set(JxBrowserStatus.INSTALLED);
     installation.complete(JxBrowserStatus.INSTALLED);
   }

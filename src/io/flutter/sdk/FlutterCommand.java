@@ -164,13 +164,13 @@ public class FlutterCommand {
    * Returns the handler if successfully started.
    */
   @Nullable
-  public OSProcessHandler startProcess(boolean sendAnalytics) {
+  public OSProcessHandler startProcess(@Nullable Project project, boolean sendAnalytics) {
     try {
       final GeneralCommandLine commandLine = createGeneralCommandLine(null);
       LOG.info(commandLine.toString());
       final OSProcessHandler handler = new OSProcessHandler(commandLine);
       if (sendAnalytics) {
-        type.sendAnalyticsEvent();
+        type.sendAnalyticsEvent(project);
       }
       return handler;
     }
@@ -208,7 +208,7 @@ public class FlutterCommand {
           }
         }
       });
-      type.sendAnalyticsEvent();
+      type.sendAnalyticsEvent(project);
       return new FlutterCommandStartResult(handler);
     }
     catch (ExecutionException e) {
@@ -292,9 +292,11 @@ public class FlutterCommand {
       this.subCommand = ImmutableList.copyOf(subCommand);
     }
 
-    void sendAnalyticsEvent() {
-      final String action = String.join("_", subCommand).replaceAll("-", "");
-      FlutterInitializer.getAnalytics().sendEvent("flutter", action);
+    void sendAnalyticsEvent(@Nullable Project project) {
+      if (project != null) {
+        final String action = String.join("_", subCommand).replaceAll("-", "");
+        FlutterInitializer.getAnalytics(project).sendEvent("flutter", action);
+      }
     }
   }
 }

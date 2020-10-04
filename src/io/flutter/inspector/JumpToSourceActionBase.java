@@ -38,7 +38,7 @@ public abstract class JumpToSourceActionBase extends InspectorTreeActionBase {
       return;
     }
 
-    FlutterInitializer.getAnalytics().sendEvent("inspector", id);
+    FlutterInitializer.getAnalytics(project).sendEvent("inspector", id);
 
     final XNavigatable navigatable = sourcePosition -> {
       if (sourcePosition != null) {

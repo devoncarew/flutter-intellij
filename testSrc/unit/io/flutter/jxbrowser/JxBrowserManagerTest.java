@@ -7,7 +7,7 @@ package io.flutter.jxbrowser;
 
 import com.intellij.openapi.project.Project;
 import io.flutter.FlutterInitializer;
-import io.flutter.analytics.Analytics;
+import io.flutter.analytics.ProjectAnalytics;
 import io.flutter.utils.FileUtils;
 import io.flutter.utils.JxBrowserUtils;
 import org.junit.Assert;
@@ -39,9 +39,9 @@ public class JxBrowserManagerTest {
   public void setUp() {
     JxBrowserManager.resetForTest();
 
-    final Analytics mockAnalytics = mock(Analytics.class);
+    final ProjectAnalytics mockAnalytics = mock(ProjectAnalytics.class);
     PowerMockito.mockStatic(FlutterInitializer.class);
-    when(FlutterInitializer.getAnalytics()).thenReturn(mockAnalytics);
+    when(FlutterInitializer.getAnalytics(null)).thenReturn(mockAnalytics);
   }
 
   @Test

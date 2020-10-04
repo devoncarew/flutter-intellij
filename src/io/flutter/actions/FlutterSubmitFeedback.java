@@ -14,7 +14,7 @@ import org.jetbrains.annotations.NotNull;
 public class FlutterSubmitFeedback extends DumbAwareAction {
   @Override
   public void actionPerformed(@NotNull final AnActionEvent e) {
-    FlutterInitializer.sendAnalyticsAction(this);
+    FlutterInitializer.sendAnalyticsAction(e.getProject(), this);
 
     final String url = "https://github.com/flutter/flutter-intellij/issues/new";
     BrowserLauncher.getInstance().browse(url, null);

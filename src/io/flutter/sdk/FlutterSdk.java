@@ -483,18 +483,18 @@ public class FlutterSdk {
    * Query 'flutter config' for the given key, and optionally use any existing cached value.
    */
   @Nullable
-  public String queryFlutterConfig(String key, boolean useCachedValue) {
+  public String queryFlutterConfig(@Nullable Project project, String key, boolean useCachedValue) {
     if (useCachedValue && cachedConfigValues.containsKey(key)) {
       return cachedConfigValues.get(key);
     }
 
-    cachedConfigValues.put(key, queryFlutterConfigImpl(key));
+    cachedConfigValues.put(key, queryFlutterConfigImpl(project, key));
     return cachedConfigValues.get(key);
   }
 
-  private String queryFlutterConfigImpl(String key) {
+  private String queryFlutterConfigImpl(@Nullable Project project, String key) {
     final FlutterCommand command = flutterConfig("--machine");
-    final OSProcessHandler process = command.startProcess(false);
+    final OSProcessHandler process = command.startProcess(project, false);
 
     if (process == null) {
       return null;

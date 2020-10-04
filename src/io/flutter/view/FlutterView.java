@@ -314,7 +314,7 @@ public class FlutterView implements PersistentStateComponent<FlutterViewState>, 
     // Track analytics for explicit inspector tab selections.
     // (The initial selection will have no previous, so we filter that out.)
     if (previous != null) {
-      FlutterInitializer.getAnalytics().sendScreenView(
+      FlutterInitializer.getAnalytics(myProject).sendScreenView(
         FlutterView.TOOL_WINDOW_ID.toLowerCase() + "/" + info.getText().toLowerCase());
     }
 
@@ -461,7 +461,7 @@ public class FlutterView implements PersistentStateComponent<FlutterViewState>, 
     catch (TimeoutException e) {
       // TODO(helin24): Are there better options for this case? e.g. stop installation and retry, link to open in browser?
       presentLabel(toolWindow, INSTALLATION_TIMED_OUT_LABEL);
-      FlutterInitializer.getAnalytics().sendEvent("jxbrowser", "timedOut");
+      FlutterInitializer.getAnalytics(myProject).sendEvent("jxbrowser", "timedOut");
     }
   }
 
@@ -549,7 +549,7 @@ public class FlutterView implements PersistentStateComponent<FlutterViewState>, 
       return;
     }
 
-    listenForRenderTreeActivations(toolWindow);
+    listenForRenderTreeActivations(app.getProject(), toolWindow);
 
     addInspectorViewContent(app, inspectorService, toolWindow);
 
@@ -629,7 +629,7 @@ public class FlutterView implements PersistentStateComponent<FlutterViewState>, 
     contentManager.addContent(emptyContent);
   }
 
-  private static void listenForRenderTreeActivations(@NotNull ToolWindow toolWindow) {
+  private static void listenForRenderTreeActivations(@NotNull Project project, @NotNull ToolWindow toolWindow) {
     final ContentManager contentManager = toolWindow.getContentManager();
     // TODO: Don't switch to ContentManagerListener until 2020.1.
     contentManager.addContentManagerListener(new ContentManagerAdapter() {
@@ -639,10 +639,10 @@ public class FlutterView implements PersistentStateComponent<FlutterViewState>, 
         if (operation == ContentManagerEvent.ContentOperation.add) {
           final String name = event.getContent().getTabName();
           if (Objects.equals(name, RENDER_TAB_LABEL)) {
-            FlutterInitializer.getAnalytics().sendEvent("inspector", "renderTreeSelected");
+            FlutterInitializer.getAnalytics(project).sendEvent("inspector", "renderTreeSelected");
           }
           else if (Objects.equals(name, WIDGET_TAB_LABEL)) {
-            FlutterInitializer.getAnalytics().sendEvent("inspector", "widgetTreeSelected");
+            FlutterInitializer.getAnalytics(project).sendEvent("inspector", "widgetTreeSelected");
           }
         }
       }

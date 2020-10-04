@@ -670,7 +670,7 @@ public class PreviewView implements PersistentStateComponent<PreviewViewState> {
   }
 
   private void sendAnalyticEvent(@NotNull String name) {
-    FlutterInitializer.getAnalytics().sendEvent("preview", name);
+    FlutterInitializer.getAnalytics(project).sendEvent("preview", name);
   }
 
   private class ShowOnlyWidgetsAction extends AnAction implements Toggleable, RightAlignedToolbarAction {

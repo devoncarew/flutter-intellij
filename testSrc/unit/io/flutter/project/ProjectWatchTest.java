@@ -19,7 +19,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 
 public class ProjectWatchTest {
-
   @Rule
   public final ProjectFixture fixture = Testing.makeEmptyModule();
 
@@ -46,5 +45,4 @@ public class ProjectWatchTest {
       assertEquals(1, callCount.get());
     });
   }
-
 }

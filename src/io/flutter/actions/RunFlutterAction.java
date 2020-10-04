@@ -50,7 +50,7 @@ public abstract class RunFlutterAction extends AnAction {
   @Override
   public void actionPerformed(@NotNull AnActionEvent e) {
     // NOTE: When making changes here, consider making similar changes to ConnectAndroidDebuggerAction.
-    FlutterInitializer.sendAnalyticsAction(this);
+    FlutterInitializer.sendAnalyticsAction(e.getProject(), this);
 
     final RunnerAndConfigurationSettings settings = getRunConfigSettings(e);
     if (settings == null) {

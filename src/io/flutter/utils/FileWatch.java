@@ -31,10 +31,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Watches a set of VirtualFiles for changes.
- *
- * <p>Each FileWatch instance represents one subscription.
- *
- * <p>The callback will be called when the IntelliJ Platform notices the change,
+ * <p>
+ * Each FileWatch instance represents one subscription.
+ * <p>
+ * The callback will be called when the IntelliJ Platform notices the change,
  * which may be different from when it's changed on disk, due to caching.
  */
 public class FileWatch {
