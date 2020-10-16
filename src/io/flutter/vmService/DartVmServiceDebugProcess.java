@@ -9,6 +9,7 @@ import com.google.gson.JsonObject;
 import com.intellij.execution.ExecutionResult;
 import com.intellij.execution.filters.OpenFileHyperlinkInfo;
 import com.intellij.execution.process.ProcessHandler;
+import com.intellij.execution.process.ProcessOutputTypes;
 import com.intellij.execution.runners.ExecutionEnvironment;
 import com.intellij.execution.ui.ConsoleViewContentType;
 import com.intellij.execution.ui.ExecutionConsole;
@@ -401,11 +402,21 @@ public abstract class DartVmServiceDebugProcess extends XDebugProcess {
     }
   }
 
-  public void handleWriteEvent(String base64Data) {
-    final String message = new String(Base64.getDecoder().decode(base64Data), StandardCharsets.UTF_8);
-    getSession().getConsoleView().print(message, ConsoleViewContentType.NORMAL_OUTPUT);
-  }
+  public void handleWriteEvent(@NotNull final String streamId, @NotNull String base64Data) {
+    final String stderrStreamId = "Stderr";
 
+    // todo: disable stdout console output
+    final String message = new String(Base64.getDecoder().decode(base64Data), StandardCharsets.UTF_8);
+    final ProcessHandler processHandler = doGetProcessHandler();
+    if (processHandler != null) {
+      processHandler.notifyTextAvailable(
+        message, stderrStreamId.equals(streamId) ? ProcessOutputTypes.STDERR : ProcessOutputTypes.STDOUT);
+    }
+
+    //getSession().getConsoleView().print(
+    //  message,
+    //  stderrStreamId.equals(streamId) ? ConsoleViewContentType.ERROR_OUTPUT : ConsoleViewContentType.NORMAL_OUTPUT);
+  }
 
   @Override
   public String getCurrentStateMessage() {

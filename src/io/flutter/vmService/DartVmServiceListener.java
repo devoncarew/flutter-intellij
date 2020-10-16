@@ -106,7 +106,7 @@ public class DartVmServiceListener implements VmServiceListener {
       case VMUpdate:
         break;
       case WriteEvent:
-        myDebugProcess.handleWriteEvent(event.getBytes());
+        myDebugProcess.handleWriteEvent(streamId, event.getBytes());
         break;
       case None:
         break;

@@ -10,6 +10,7 @@ import com.google.gson.JsonObject;
 import com.intellij.execution.ExecutionException;
 import com.intellij.execution.ExecutionManager;
 import com.intellij.execution.configurations.GeneralCommandLine;
+import com.intellij.execution.process.ColoredProcessHandler;
 import com.intellij.execution.process.ProcessAdapter;
 import com.intellij.execution.process.ProcessEvent;
 import com.intellij.execution.process.ProcessHandler;
@@ -28,6 +29,7 @@ import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.util.EventDispatcher;
 import com.intellij.util.concurrency.AppExecutorUtil;
+import com.intellij.util.io.BaseOutputReader;
 import io.flutter.FlutterInitializer;
 import io.flutter.FlutterUtils;
 import io.flutter.ObservatoryConnector;
@@ -39,7 +41,6 @@ import io.flutter.run.FlutterDevice;
 import io.flutter.run.FlutterLaunchMode;
 import io.flutter.run.common.RunMode;
 import io.flutter.settings.FlutterSettings;
-import io.flutter.utils.MostlySilentOsProcessHandler;
 import io.flutter.utils.ProgressHelper;
 import io.flutter.utils.StreamSubscription;
 import io.flutter.utils.VmServiceListenerAdapter;
@@ -242,7 +243,15 @@ public class FlutterApp implements Disposable {
     LOG.info(analyticsStart + " " + project.getName() + " (" + mode.mode() + ")");
     LOG.info(command.toString());
 
-    final ProcessHandler process = new MostlySilentOsProcessHandler(command);
+    // ColoredProcessHandler is used to handle parsing and displaying ANSI output.
+    final ProcessHandler process = new ColoredProcessHandler(command) {
+      // This override quiets some IntelliJ log messages about long-running mostly idle daemon processes.
+      @NotNull
+      @Override
+      protected BaseOutputReader.Options readerOptions() {
+        return BaseOutputReader.Options.forMostlySilentProcess();
+      }
+    };
     Disposer.register(project, process::destroyProcess);
 
     // Send analytics for the start and stop events.
@@ -813,7 +822,10 @@ class FlutterAppDaemonEventListener implements DaemonEvent.Listener {
   @Override
   public void onDaemonLog(@NotNull DaemonEvent.DaemonLog message) {
     final ConsoleView console = app.getConsole();
-    if (console == null) return;
+    if (console == null) {
+      return;
+    }
+
     if (message.log != null) {
       console.print(message.log + "\n", message.error ? ConsoleViewContentType.ERROR_OUTPUT : ConsoleViewContentType.NORMAL_OUTPUT);
     }
@@ -869,7 +881,10 @@ class FlutterAppDaemonEventListener implements DaemonEvent.Listener {
   @Override
   public void onAppLog(@NotNull DaemonEvent.AppLog message) {
     final ConsoleView console = app.getConsole();
-    if (console == null) return;
+    if (console == null) {
+      return;
+    }
+
     console.print(message.log + "\n", message.error ? ConsoleViewContentType.ERROR_OUTPUT : ConsoleViewContentType.NORMAL_OUTPUT);
   }
 

@@ -83,6 +83,10 @@ public class VMServiceManager implements FlutterApp.FlutterAppListener, Disposab
 
     vmService.streamListen(VmService.SERVICE_STREAM_ID, VmServiceConsumers.EMPTY_SUCCESS_CONSUMER);
 
+    // Subscribe the stdout and stderr events so we can display the output in the console.
+    vmService.streamListen(VmService.STDOUT_STREAM_ID, VmServiceConsumers.EMPTY_SUCCESS_CONSUMER);
+    vmService.streamListen(VmService.STDERR_STREAM_ID, VmServiceConsumers.EMPTY_SUCCESS_CONSUMER);
+
     final VmServiceListener myVmServiceListener = new VmServiceListenerAdapter() {
       @Override
       public void received(String streamId, Event event) {
